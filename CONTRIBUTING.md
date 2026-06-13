@@ -1,4 +1,4 @@
-# Contribute to KopaBridge
+# Contributing to KopaBridge
 
 Thank you for contributing to KopaBridge
 
@@ -8,7 +8,7 @@ KopaBridge is a unified energy data infrastructure platform designed to normaliz
 
 # Engineering Principles
 
-We proritize:
+We prioritize:
 
 - Security-first engineering
 - Clean architecture
@@ -89,7 +89,7 @@ npm run lint
 
 ## Required Practices
 
-- Use srict typing
+- Use strict typing
 - Avoid `any`
 - Prefer interfaces and DTOs
 - Keep functions small and focused
@@ -110,7 +110,17 @@ npm run lint
 
 ## REST Conventions
 
-Use:
+Use resource-based endpoints:
+
+```txt
+GET    /v1/users
+POST   /v1/users
+GET    /v1/users/:id
+PATCH  /v1/users/:id
+DELETE /v1/users/:id
+```
+
+All API routes must be versioned
 
 ```txt
 /v1/users
@@ -167,7 +177,7 @@ When adding major features:
 Before opening a PR:
 
 - Ensure lint passes
-- Ensure tests passes
+- Ensure tests pass
 - Rebase against latest develop branch
 - Add clear PR descriptions
 
@@ -180,6 +190,6 @@ KopaBridge is designed as:
 - API-first infrastructure
 - Fintech-grade backend systems
 - Eventual multi-provider normalization platform
-- Consent-driven data interoparability layer
+- Consent-driven data interoperability layer
 
 Maintain scalability and modularity in all engineering decisions.
