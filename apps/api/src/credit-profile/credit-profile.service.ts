@@ -38,7 +38,12 @@ export class CreditProfileService {
     const late = payments.filter((p) => p.status === 'late').length;
     const missed = payments.filter((p) => p.status === 'missed').length;
 
-    let creditScore = null;
+    let creditScore: {
+      energyAccountId: string;
+      totalPayments: number;
+      score: number;
+      rating: string;
+    } | null = null;
 
     if (energyAccounts.length > 0) {
       creditScore = await this.creditScoreService.calculateScore(
