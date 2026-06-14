@@ -33,10 +33,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
       }
     }
 
+    const requestId = (request as any).requestId;
+
     response.status(status).json({
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,
+      requestId,
       message,
     });
   }

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -13,6 +13,7 @@ import { EnergyAccountsModule } from './energy-accounts/energy-accounts.module';
 import { PaymentsModule } from './payments/payments.module';
 import { CreditScoreModule } from './credit-score/credit-score.module';
 import { CreditProfileModule } from './credit-profile/credit-profile.module';
+import { LoggerMiddleware } from './common/middleware/logger.middleware';
 
 @Module({
   imports: [
@@ -32,9 +33,14 @@ import { CreditProfileModule } from './credit-profile/credit-profile.module';
   controllers: [AppController],
   providers: [
     AppService,
-    { provide: APP_GUARD,
+    {
+      provide: APP_GUARD,
       useClass: RolesGuard,
     },
-  ], 
+  ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(LoggerMiddleware).forRoutes('*');
+  }
+}
