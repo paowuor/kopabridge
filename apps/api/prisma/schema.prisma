@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String           @id @default(uuid())
+  email          String           @unique
+  password       String
+  role           String           @default("user")
+  energyAccounts EnergyAccount[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+}
+
+model Provider {
+  id             String           @id @default(uuid())
+  name           String           @unique
+  slug           String           @unique
+  apiBaseUrl     String?
+  isActive       Boolean          @default(true)
+  energyAccounts EnergyAccount[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+}
+
+model EnergyAccount {
+  id             String           @id @default(uuid())
+  accountNumber  String           @unique
+  deviceId       String           @unique
+  customerName   String
+  isActive       Boolean          @default(true)
+
+  userId         String
+  providerId     String
+
+  user           User             @relation(fields: [userId], references: [id])
+  provider       Provider         @relation(fields: [providerId], references: [id])
+
+  payments       PaymentHistory[] 
+
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+}
+
+model PaymentHistory {
+  id               String        @id @default(uuid())
+  amount           Float
+  currency         String        @default("KES")
+  status           String
+  paidAt           DateTime?
+  dueDate          DateTime
+  paymentReference String?       @unique
+
+  energyAccountId  String
+  energyAccount    EnergyAccount @relation(fields: [energyAccountId], references: [id])
+
+  createdAt        DateTime      @default(now())
+}
