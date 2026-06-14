@@ -4,11 +4,19 @@ import { ProvidersService } from './providers.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { MkopaConnector } from './connectors/mkopa.connector';
 import { ProviderRegistryService } from './provider-registry.service';
+import { MkopaNormalizer } from './normalizers/mkopa.normalizer';
+import { ProviderNormalizationService } from './provider-normalization.service';
 
 @Module({
   imports: [PrismaModule],
   controllers: [ProvidersController],
-  providers: [ProvidersService, MkopaConnector, ProviderRegistryService],
+  providers: [
+    ProvidersService, 
+    MkopaConnector, 
+    ProviderRegistryService,
+    MkopaNormalizer,
+    ProviderNormalizationService,
+  ],
   exports: [ProviderRegistryService],
 })
 export class ProvidersModule {}

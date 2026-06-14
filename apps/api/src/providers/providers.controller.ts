@@ -2,11 +2,13 @@ import { Body, Controller, Get, Post, Param } from '@nestjs/common';
 import { ProvidersService } from './providers.service';
 import { CreateProviderDto } from './dto/create-provider.dto';
 import { ProviderRegistryService } from './provider-registry.service';
+import { ProviderNormalizationService } from './provider-normalization.service';
 
 @Controller('providers')
 export class ProvidersController {
   constructor(
     private readonly providersService: ProvidersService,
+    private readonly normalizationService: ProviderNormalizationService,
     private readonly registry: ProviderRegistryService,
   ) {}
 
@@ -42,8 +44,8 @@ export class ProvidersController {
 
     const token = await connector.exchangeToken(code);
 
-    const data = await connector.fetchCustomerData(token);
+    const rawData = await connector.fetchCustomerData(token);
 
-    return data;
+    return this.normalizationService.normalize(slug, rawData);
   }
 }

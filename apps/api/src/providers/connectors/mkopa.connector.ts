@@ -12,14 +12,19 @@ export class MkopaConnector implements ProviderConnector {
   }
 
   async fetchCustomerData(accessToken: string): Promise<any> {
-    return {
-      provider: 'M-KOPA',
-      customerName: 'Paul Owuor',
-      accountNumber: 'MKP-93842',
-      paymentHistory: [
-        { amount: 500, status: 'paid' },
-        { amount: 500, status: 'late' },
-      ],
-    };
-  }
+  return {
+    cust_name: 'Paul Owuor',
+    acct_no: 'MKP-93842',
+    payments: [
+      {
+        amt: 500,
+        state: 'paid',
+      },
+      {
+        amt: 500,
+        state: 'late',
+      },
+    ],
+  };
+}
 }
