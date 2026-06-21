@@ -6,9 +6,13 @@ import { MkopaConnector } from './connectors/mkopa.connector';
 import { ProviderRegistryService } from './provider-registry.service';
 import { MkopaNormalizer } from './normalizers/mkopa.normalizer';
 import { ProviderNormalizationService } from './provider-normalization.service';
+import { ConsentsModule } from '../consents/consents.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [
+    PrismaModule,
+    ConsentsModule
+  ],
   controllers: [ProvidersController],
   providers: [
     ProvidersService, 

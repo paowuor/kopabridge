@@ -14,6 +14,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { CreditScoreModule } from './credit-score/credit-score.module';
 import { CreditProfileModule } from './credit-profile/credit-profile.module';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
+import { ConsentsModule } from './consents/consents.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { LoggerMiddleware } from './common/middleware/logger.middleware';
     PaymentsModule,
     CreditScoreModule,
     CreditProfileModule,
+    ConsentsModule,
   ],
   controllers: [AppController],
   providers: [

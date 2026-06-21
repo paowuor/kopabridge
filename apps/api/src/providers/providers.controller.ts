@@ -3,6 +3,7 @@ import { ProvidersService } from './providers.service';
 import { CreateProviderDto } from './dto/create-provider.dto';
 import { ProviderRegistryService } from './provider-registry.service';
 import { ProviderNormalizationService } from './provider-normalization.service';
+import { ConsentsService } from '../consents/consents.service';
 
 @Controller('providers')
 export class ProvidersController {
@@ -10,6 +11,7 @@ export class ProvidersController {
     private readonly providersService: ProvidersService,
     private readonly normalizationService: ProviderNormalizationService,
     private readonly registry: ProviderRegistryService,
+    private readonly consentsService: ConsentsService,
   ) {}
 
   @Post()
@@ -44,8 +46,16 @@ export class ProvidersController {
 
     const token = await connector.exchangeToken(code);
 
-    const rawData = await connector.fetchCustomerData(token);
+    const testUserId = 'user-123';
+    const testProviderId = 'provider-uuid-abc-123';
 
+    await this.consentsService.createConsent(
+      testUserId,
+      testProviderId,
+      token,
+    );
+
+    const rawData = await connector.fetchCustomerData(token);
     return this.normalizationService.normalize(slug, rawData);
   }
 }
