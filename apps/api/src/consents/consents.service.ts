@@ -1,20 +1,26 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { VaultService } from '../vault/vault.service';
 
 @Injectable()
 export class ConsentsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly vaultService: VaultService,
+  ) {}
 
   async createConsent(
     userId: string,
     providerId: string,
     accessToken: string,
   ) {
+    const encryptedToken = this.vaultService.encrypt(accessToken);
+
     return this.prisma.providerConsent.create({
       data: {
         userId,
         providerId,
-        accessToken,
+        accessToken: encryptedToken, // 2. Store the encrypted string
         expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         revoked: false,
       },
@@ -31,7 +37,7 @@ export class ConsentsService {
   }
 
   async findActiveConsents(userId: string) {
-    return this.prisma.providerConsent.findMany({
+    const consents = await this.prisma.providerConsent.findMany({
       where: {
         userId,
         revoked: false,
@@ -40,5 +46,10 @@ export class ConsentsService {
         provider: true,
       },
     });
+
+    return consents.map((consent) => ({
+      ...consent,
+      accessToken: this.vaultService.decrypt(consent.accessToken),
+    }));
   }
 }
