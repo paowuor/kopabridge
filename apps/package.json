@@ -3,7 +3,7 @@
     "@nestjs/config": "^4.0.4",
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/passport": "^11.0.5",
-    "@nestjs/swagger": "^11.4.4",
+    "@nestjs/swagger": "^11.4.5",
     "@prisma/client": "^7.8.0",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
