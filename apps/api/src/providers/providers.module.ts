@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ProvidersController } from './providers.controller';
 import { ProvidersService } from './providers.service';
 import { PrismaModule } from '../prisma/prisma.module';
@@ -7,11 +7,13 @@ import { ProviderRegistryService } from './provider-registry.service';
 import { MkopaNormalizer } from './normalizers/mkopa.normalizer';
 import { ProviderNormalizationService } from './provider-normalization.service';
 import { ConsentsModule } from '../consents/consents.module';
+import { SyncModule } from '../sync/sync.module';
 
 @Module({
   imports: [
     PrismaModule,
-    ConsentsModule
+    ConsentsModule,
+    forwardRef(() => SyncModule),
   ],
   controllers: [ProvidersController],
   providers: [
@@ -21,6 +23,6 @@ import { ConsentsModule } from '../consents/consents.module';
     MkopaNormalizer,
     ProviderNormalizationService,
   ],
-  exports: [ProviderRegistryService],
+  exports: [ProviderRegistryService, ProviderNormalizationService],
 })
 export class ProvidersModule {}

@@ -1,5 +1,6 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { BullModule } from '@nestjs/bullmq'; 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
@@ -16,6 +17,7 @@ import { CreditProfileModule } from './credit-profile/credit-profile.module';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { ConsentsModule } from './consents/consents.module';
 import { VaultModule } from './vault/vault.module';
+import { SyncModule } from './sync/sync.module';
 
 @Module({
   imports: [
@@ -23,6 +25,18 @@ import { VaultModule } from './vault/vault.module';
       isGlobal: true,
       load: [appConfig],
     }),
+    
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: () => ({
+        connection: {
+          host: process.env.REDIS_HOST || 'localhost',
+          port: parseInt(process.env.REDIS_PORT || '6379', 10),
+        },
+      }),
+      inject: [ConfigService],
+    }),
+
     UsersModule,
     PrismaModule,
     AuthModule,
@@ -33,6 +47,7 @@ import { VaultModule } from './vault/vault.module';
     CreditProfileModule,
     ConsentsModule,
     VaultModule,
+    SyncModule, 
   ],
   controllers: [AppController],
   providers: [

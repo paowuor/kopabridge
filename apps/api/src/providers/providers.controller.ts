@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Post, Param } from '@nestjs/common';
+import { Body, Controller, Get, Post, Param, HttpCode, HttpStatus } from '@nestjs/common';
 import { ProvidersService } from './providers.service';
 import { CreateProviderDto } from './dto/create-provider.dto';
 import { ProviderRegistryService } from './provider-registry.service';
-import { ProviderNormalizationService } from './provider-normalization.service';
+import { ProviderNormalizationService } from './provider-normalization.service'; 
 import { ConsentsService } from '../consents/consents.service';
+import { SyncService } from '../sync/sync.service';
 
 @Controller('providers')
 export class ProvidersController {
@@ -12,6 +13,7 @@ export class ProvidersController {
     private readonly normalizationService: ProviderNormalizationService,
     private readonly registry: ProviderRegistryService,
     private readonly consentsService: ConsentsService,
+    private readonly syncService: SyncService,
   ) {}
 
   @Post()
@@ -38,6 +40,7 @@ export class ProvidersController {
   }
 
   @Get(':slug/callback/:code')
+  @HttpCode(HttpStatus.ACCEPTED)
   async callback(
     @Param('slug') slug: string,
     @Param('code') code: string,
@@ -55,7 +58,11 @@ export class ProvidersController {
       token,
     );
 
-    const rawData = await connector.fetchCustomerData(token);
-    return this.normalizationService.normalize(slug, rawData);
+    await this.syncService.enqueueInitialSync(testUserId, testProviderId, token);
+
+    return {
+      status: 'accepted',
+      message: 'Provider synchronization has been scheduled.',
+    };
   }
 }
