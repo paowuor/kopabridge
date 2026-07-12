@@ -1,0 +1,38 @@
+# Dependency directories
+node_modules/
+jspm_packages/
+.npm/
+
+# Local configuration and private environment files
+.env
+.env.production
+.env.local
+.env.*.local
+
+# Version control system configurations
+.git
+.gitignore
+.gitattributes
+
+# Test, coverage, and diagnostic files
+coverage/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.nyc_output/
+
+# IDE files and workspace configuration layers
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Local build outputs and system garbage files
+dist/
+build/
+.DS_Store
+Thumbs.db

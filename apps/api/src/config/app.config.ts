@@ -12,7 +12,7 @@ export default () => {
   const hexRegex = /^[0-9a-fA-F]{64}$/;
   if (!hexRegex.test(encryptionKey)) {
     throw new Error(
-      `❌ CONFIGURATION ERROR: TOKEN_ENCRYPTION_KEY must be exactly a 64-character hexadecimal string. Received length: ${encryptionKey.length}`,
+      `❌ CONFIGURATION ERROR: TOKEN_ENCRYPTION_KEY must be exactly a 64-character hexadecimal string. Received length: ${encryptionKey?.length}`,
     );
   }
 
@@ -28,10 +28,14 @@ export default () => {
     },
 
     app: {
-      env: process.env.NODE_ENV,
+      env: process.env.NODE_ENV || 'development',
+    },
+
+    redis: {
+      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT || '6379', 10),
     },
     
-    // Explicitly expose it here if you want to pull it structured elsewhere
     vault: {
       encryptionKey,
     },

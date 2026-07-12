@@ -28,10 +28,10 @@ import { SyncModule } from './sync/sync.module';
     
     BullModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: () => ({
+      useFactory: (configService: ConfigService) => ({
         connection: {
-          host: process.env.REDIS_HOST || 'localhost',
-          port: parseInt(process.env.REDIS_PORT || '6379', 10),
+          host: configService.get<string>('redis.host'),
+          port: configService.get<number>('redis.port'),
         },
       }),
       inject: [ConfigService],
