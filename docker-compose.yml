@@ -1,23 +1,64 @@
-version: '3.9'
+# 💡 Removed the obsolete "version" line to fix the warning message
 
 services:
   postgres:
-    image: postgres:16
-
-    container_name: kopabridge-postgres
-
-    restart: always
-
+    image: postgres:17-alpine
+    container_name: kopabridge-db
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: kopabridge
-
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-kopabridge}
     ports:
-      - '5432:5432'
-
+      - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-kopabridge}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - kopabridge-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: kopabridge-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - kopabridge-network
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: kopabridge-api
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./.env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: "postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-kopabridge}?schema=public"
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - kopabridge-network
 
 volumes:
-  postgres_data:
+  pgdata:
+
+networks:
+  kopabridge-network:
+    name: kopabridge-network
