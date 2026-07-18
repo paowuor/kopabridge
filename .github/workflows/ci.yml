@@ -46,3 +46,11 @@ jobs:
 
       - name: Run ESLint Analyzer
         run: npm run lint
+      
+      - name: Validate Production Docker Build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./apps/api/Dockerfile
+          push: false
+          tags: kopabridge-api:latest

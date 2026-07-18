@@ -6,7 +6,15 @@ describe('SyncService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [SyncService],
+      providers: [
+        SyncService,
+        {
+          provide: 'BullQueue_provider-sync',
+          useValue: {
+            add: jest.fn().mockResolvedValue({ id: 'job-1' }),
+          },
+        },
+      ],
     }).compile();
 
     service = module.get<SyncService>(SyncService);

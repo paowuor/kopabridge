@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { PrismaService } from '../prisma/prisma.service';
 import { EnergyAccountsService } from './energy-accounts.service';
 
 describe('EnergyAccountsService', () => {
@@ -6,7 +7,18 @@ describe('EnergyAccountsService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [EnergyAccountsService],
+      providers: [
+        EnergyAccountsService,
+        {
+          provide: PrismaService,
+          useValue: {
+            energyAccount: {
+              create: jest.fn(),
+              findMany: jest.fn(),
+            },
+          },
+        },
+      ],
     }).compile();
 
     service = module.get<EnergyAccountsService>(EnergyAccountsService);
