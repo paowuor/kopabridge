@@ -39,10 +39,10 @@ services:
       context: ./apps/api
       dockerfile: Dockerfile
     container_name: kopabridge-api
-    ports:
-      - "3000:3000"
     env_file:
-      - ./.env
+      - ./apps/api/.env
+    expose:
+      - "3000"
     environment:
       NODE_ENV: production
       DATABASE_URL: "postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-kopabridge}?schema=public"
@@ -53,6 +53,19 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - kopabridge-network
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: kopabridge-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      api:
+        condition: service_started
     networks:
       - kopabridge-network
 
