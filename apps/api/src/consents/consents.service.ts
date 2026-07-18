@@ -9,11 +9,7 @@ export class ConsentsService {
     private readonly vaultService: VaultService,
   ) {}
 
-  async createConsent(
-    userId: string,
-    providerId: string,
-    accessToken: string,
-  ) {
+  async createConsent(userId: string, providerId: string, accessToken: string) {
     const encryptedToken = this.vaultService.encrypt(accessToken);
 
     return this.prisma.providerConsent.create({

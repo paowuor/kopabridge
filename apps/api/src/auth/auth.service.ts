@@ -7,47 +7,44 @@ import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
-    constructor(
-        private prisma: PrismaService,
-        private jwtService: JwtService,
-    ) {}
+  constructor(
+    private prisma: PrismaService,
+    private jwtService: JwtService,
+  ) {}
 
-    async register(dto: RegisterDto) {
-        const hashedPassword = await bcrypt.hash(dto.password, 10);
+  async register(dto: RegisterDto) {
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
 
-        const user = await this.prisma.user.create({
-            data: {
-                email: dto.email,
-                password: hashedPassword,
-            },
-        });
+    const user = await this.prisma.user.create({
+      data: {
+        email: dto.email,
+        password: hashedPassword,
+      },
+    });
 
-        return { id: user.id, email: user.email };
+    return { id: user.id, email: user.email };
+  }
+
+  async login(dto: LoginDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
     }
 
-    async login(dto: LoginDto) {
-        const user = await this.prisma.user.findUnique({
-            where: { email: dto.email },
-        });
+    const isPasswordValid = await bcrypt.compare(dto.password, user.password);
 
-        if (!user) {
-            throw new UnauthorizedException('Invalid credentials');
-        }
-
-        const isPasswordValid = await bcrypt.compare(
-            dto.password,
-            user.password,
-        );
-
-        if (!isPasswordValid) {
-            throw new UnauthorizedException('Invalid credentials');
-        }
-
-        const token = this.jwtService.sign({
-            sub: user.id,
-            email: user.email,
-            role: user.role,
-        });
-        return { access_token: token };
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid credentials');
     }
+
+    const token = this.jwtService.sign({
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+    });
+    return { access_token: token };
+  }
 }

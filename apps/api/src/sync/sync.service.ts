@@ -15,9 +15,11 @@ export class SyncService {
    * Enqueues an initial synchronization task following a successful OAuth connection
    */
   async enqueueInitialSync(userId: string, providerId: string, token: string) {
-    this.logger.log(`Queueing initial sync job for user ${userId} and provider ${providerId}`);
-    
-    // Add the job to the queue. 
+    this.logger.log(
+      `Queueing initial sync job for user ${userId} and provider ${providerId}`,
+    );
+
+    // Add the job to the queue.
     // Format: queue.add('job-name', payload_data, options)
     const job = await this.syncQueue.add(
       'initial-sync',

@@ -2,7 +2,10 @@ import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import {
+  AuthenticatedUser,
+  CurrentUser,
+} from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/roles/roles.enum';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -30,7 +33,7 @@ export class UsersController {
     status: 401,
     description: 'Unauthorized. Missing or invalid JWT token.',
   })
-  getProfile(@CurrentUser() user: any) {
+  getProfile(@CurrentUser() user: AuthenticatedUser | undefined) {
     return user;
   }
 
@@ -54,13 +57,14 @@ export class UsersController {
   @ApiOperation({ summary: 'List all users' })
   @ApiResponse({
     status: 200,
-    description: 'Successfully retrieved users list along with request context.',
+    description:
+      'Successfully retrieved users list along with request context.',
   })
   @ApiResponse({
     status: 401,
     description: 'Unauthorized.',
   })
-  findAll(@CurrentUser() user: any) {
+  findAll(@CurrentUser() user: AuthenticatedUser | undefined) {
     return {
       requestedBy: user,
       data: this.usersService.getUsers(),

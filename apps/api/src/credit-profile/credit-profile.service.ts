@@ -30,9 +30,7 @@ export class CreditProfileService {
 
     const providers = energyAccounts.map((account) => account.provider);
 
-    const payments = energyAccounts.flatMap(
-      (account) => account.payments,
-    );
+    const payments = energyAccounts.flatMap((account) => account.payments);
 
     const paid = payments.filter((p) => p.status === 'paid').length;
     const late = payments.filter((p) => p.status === 'late').length;

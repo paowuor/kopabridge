@@ -11,13 +11,13 @@ export class VaultService {
 
   constructor(private readonly configService: ConfigService) {
     const keyHex = this.configService.get<string>('TOKEN_ENCRYPTION_KEY');
-    
+
     if (!keyHex || keyHex.length !== 64) {
       throw new InternalServerErrorException(
         'VaultService: TOKEN_ENCRYPTION_KEY must be a 64-character hex string (32 bytes).',
       );
     }
-    
+
     // Convert the hex string into raw binary buffer bytes
     this.encryptionKey = Buffer.from(keyHex, 'hex');
   }
@@ -30,7 +30,11 @@ export class VaultService {
     const iv = crypto.randomBytes(this.ivLength);
 
     // 2. Initialize the cipher with AES-256-GCM, key, and IV
-    const cipher = crypto.createCipheriv(this.algorithm, this.encryptionKey, iv) as crypto.CipherGCM;
+    const cipher = crypto.createCipheriv(
+      this.algorithm,
+      this.encryptionKey,
+      iv,
+    );
 
     // 3. Encrypt the string data
     let encrypted = cipher.update(plainText, 'utf8', 'hex');
@@ -50,7 +54,7 @@ export class VaultService {
     try {
       // 1. Unpack the components from our stored string contract
       const [ivHex, tagHex, encryptedHex] = cipherText.split('.');
-      
+
       if (!ivHex || !tagHex || !encryptedHex) {
         throw new Error('Invalid encrypted text format format.');
       }
@@ -59,7 +63,11 @@ export class VaultService {
       const tag = Buffer.from(tagHex, 'hex');
 
       // 2. Initialize the decipher instance
-      const decipher = crypto.createDecipheriv(this.algorithm, this.encryptionKey, iv) as crypto.DecipherGCM;
+      const decipher = crypto.createDecipheriv(
+        this.algorithm,
+        this.encryptionKey,
+        iv,
+      );
 
       // 3. Feed the authentication tag back into the decipher engine to verify integrity
       decipher.setAuthTag(tag);
@@ -69,7 +77,7 @@ export class VaultService {
       decrypted += decipher.final('utf8');
 
       return decrypted;
-    } catch (error) {
+    } catch {
       throw new InternalServerErrorException(
         'Vault decryption failed. Data may be corrupted or the encryption key is incorrect.',
       );

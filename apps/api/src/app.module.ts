@@ -1,6 +1,6 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { BullModule } from '@nestjs/bullmq'; 
+import { BullModule } from '@nestjs/bullmq';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
@@ -25,7 +25,7 @@ import { SyncModule } from './sync/sync.module';
       isGlobal: true,
       load: [appConfig],
     }),
-    
+
     BullModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
@@ -47,7 +47,7 @@ import { SyncModule } from './sync/sync.module';
     CreditProfileModule,
     ConsentsModule,
     VaultModule,
-    SyncModule, 
+    SyncModule,
   ],
   controllers: [AppController],
   providers: [

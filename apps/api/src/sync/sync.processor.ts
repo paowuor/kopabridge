@@ -7,18 +7,22 @@ export class SyncProcessor extends WorkerHost {
   private readonly logger = new Logger(SyncProcessor.name);
 
   /**
-   * The core execution loop triggered automatically whenever a new job 
+   * The core execution loop triggered automatically whenever a new job
    * is pushed to the 'provider-sync' queue channel.
    */
-  async process(job: Job<any, any, string>): Promise<any> {
-    this.logger.log(`[Job Started] Processing job #${job.id} of type: "${job.name}"`);
+  process(job: Job<unknown, unknown, string>): Promise<{ success: boolean }> {
+    this.logger.log(
+      `[Job Started] Processing job #${job.id} of type: "${job.name}"`,
+    );
     this.logger.debug(`Job Payload Context: ${JSON.stringify(job.data)}`);
 
     switch (job.name) {
       case 'initial-sync':
-        this.logger.log(`Handling data ingestion for a newly connected provider account.`);
+        this.logger.log(
+          `Handling data ingestion for a newly connected provider account.`,
+        );
         break;
-      
+
       case 'scheduled-refresh':
         this.logger.log(`Handling routine telemetry synchronization updates.`);
         break;
@@ -34,6 +38,6 @@ export class SyncProcessor extends WorkerHost {
     // 4. Save metrics & recalculate credit scores
 
     this.logger.log(`[Job Completed] Job #${job.id} processed successfully.`);
-    return { success: true };
+    return Promise.resolve({ success: true });
   }
 }

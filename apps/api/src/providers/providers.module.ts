@@ -10,15 +10,11 @@ import { ConsentsModule } from '../consents/consents.module';
 import { SyncModule } from '../sync/sync.module';
 
 @Module({
-  imports: [
-    PrismaModule,
-    ConsentsModule,
-    forwardRef(() => SyncModule),
-  ],
+  imports: [PrismaModule, ConsentsModule, forwardRef(() => SyncModule)],
   controllers: [ProvidersController],
   providers: [
-    ProvidersService, 
-    MkopaConnector, 
+    ProvidersService,
+    MkopaConnector,
     ProviderRegistryService,
     MkopaNormalizer,
     ProviderNormalizationService,
