@@ -1,7 +1,6 @@
 import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import {
   AuthenticatedUser,
   CurrentUser,
@@ -9,6 +8,7 @@ import {
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/roles/roles.enum';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { Public } from '../auth/decorators/public.decorator';
 import {
   ApiTags,
   ApiOperation,
@@ -21,8 +21,8 @@ import {
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  // Protected by the global JwtAuthGuard (default) — no @Public() here.
   @ApiBearerAuth() // Adds padlock icon in Swagger UI
-  @UseGuards(JwtAuthGuard)
   @Get('me')
   @ApiOperation({ summary: 'Get current authenticated user profile' })
   @ApiResponse({
@@ -37,6 +37,7 @@ export class UsersController {
     return user;
   }
 
+  @Public()
   @Post()
   @ApiOperation({ summary: 'Create a new user (Public endpoint)' })
   @ApiResponse({
@@ -51,10 +52,14 @@ export class UsersController {
     return this.usersService.createUser(dto);
   }
 
+  // Admin-only: this previously returned every user (including password
+  // hashes) to any logged-in user. Now requires the ADMIN role, and the
+  // service layer strips the password field from the response.
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
   @Get()
-  @ApiOperation({ summary: 'List all users' })
+  @ApiOperation({ summary: 'List all users (Admin only)' })
   @ApiResponse({
     status: 200,
     description:
@@ -64,15 +69,19 @@ export class UsersController {
     status: 401,
     description: 'Unauthorized.',
   })
-  findAll(@CurrentUser() user: AuthenticatedUser | undefined) {
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden. User does not have ADMIN privileges.',
+  })
+  async findAll(@CurrentUser() user: AuthenticatedUser | undefined) {
     return {
       requestedBy: user,
-      data: this.usersService.getUsers(),
+      data: await this.usersService.getUsers(),
     };
   }
 
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Get('admin')
   @ApiOperation({ summary: 'Get administrative dashboard data (Admin Only)' })
