@@ -1,9 +1,26 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class CreditScoreService {
   constructor(private prisma: PrismaService) {}
+
+  /**
+   * Looks up just the owning userId for an energy account, so callers can
+   * check ownership before exposing score data.
+   */
+  async findAccountOwner(energyAccountId: string) {
+    const account = await this.prisma.energyAccount.findUnique({
+      where: { id: energyAccountId },
+      select: { id: true, userId: true },
+    });
+
+    if (!account) {
+      throw new NotFoundException('Energy account not found');
+    }
+
+    return account;
+  }
 
   async calculateScore(energyAccountId: string) {
     const payments = await this.prisma.paymentHistory.findMany({
