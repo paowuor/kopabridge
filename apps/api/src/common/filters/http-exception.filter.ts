@@ -4,51 +4,41 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 
-interface ErrorResponseBody {
-  message?: string | string[];
-}
-
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(HttpExceptionFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
-
     const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest<Request & { requestId?: string }>();
+    const request = ctx.getRequest<Request>();
+    const requestId = (request.headers['x-request-id'] as string) || 'N/A';
 
-    let status = HttpStatus.INTERNAL_SERVER_ERROR;
-    let message: string | string[] = 'Internal server error';
+    const status =
+      exception instanceof HttpException
+        ? exception.getStatus()
+        : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    if (exception instanceof HttpException) {
-      status = exception.getStatus();
+    const message =
+      exception instanceof HttpException
+        ? exception.getResponse()
+        : 'Internal server error';
 
-      const exceptionResponse = exception.getResponse();
-
-      if (typeof exceptionResponse === 'string') {
-        message = exceptionResponse;
-      } else if (
-        typeof exceptionResponse === 'object' &&
-        exceptionResponse !== null
-      ) {
-        const res = exceptionResponse as ErrorResponseBody;
-
-        if (typeof res.message === 'string' || Array.isArray(res.message)) {
-          message = res.message;
-        }
-      }
-    }
-
-    const requestId = request.requestId;
+    this.logger.error(
+      `[${requestId}]${request.method} ${request.url} Status:${status}`,
+      exception instanceof Error ? exception.stack : String(exception),
+    );
 
     response.status(status).json({
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,
       requestId,
-      message,
+      error: typeof message === 'string' ? { message } : message,
     });
   }
 }
