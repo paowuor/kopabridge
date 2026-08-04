@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { MkopaConnector } from './connectors/mkopa.connector';
 
 @Injectable()
@@ -10,7 +10,7 @@ export class ProviderRegistryService {
       case 'm-kopa':
         return this.mkopaConnector;
       default:
-        throw new Error('Provider not supported');
+        throw new NotFoundException(`Provider "${providerSlug}" not supported`);
     }
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProviderDto } from './dto/create-provider.dto';
 
@@ -14,5 +14,17 @@ export class ProvidersService {
 
   async findAll() {
     return this.prisma.provider.findMany();
+  }
+
+  async findBySlug(slug: string) {
+    const provider = await this.prisma.provider.findUnique({
+      where: { slug },
+    });
+
+    if (!provider || !provider.isActive) {
+      throw new NotFoundException(`Provider "${slug}" not found`);
+    }
+
+    return provider;
   }
 }
