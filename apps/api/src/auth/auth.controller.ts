@@ -3,12 +3,14 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Public } from './decorators/public.decorator';
 
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Public()
   @Post('register')
   @ApiOperation({ summary: 'Register a new user account' })
   @ApiResponse({
@@ -23,6 +25,7 @@ export class AuthController {
     return this.authService.register(dto);
   }
 
+  @Public()
   @Post('login')
   @ApiOperation({ summary: 'Login user and return JWT token' })
   @ApiResponse({
