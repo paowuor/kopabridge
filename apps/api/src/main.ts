@@ -1,5 +1,7 @@
+import { join } from 'path';
 import { LogLevel, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
@@ -10,9 +12,11 @@ async function bootstrap() {
     ? ['log', 'warn', 'error']
     : ['verbose', 'debug', 'log', 'warn', 'error'];
 
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: logLevels,
   });
+
+  app.useStaticAssets(join(__dirname, '..', 'public'));
 
   app.useGlobalFilters(new HttpExceptionFilter());
 
