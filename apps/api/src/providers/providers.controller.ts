@@ -4,6 +4,7 @@ import {
   Get,
   Post,
   Param,
+  Query,
   HttpCode,
   HttpStatus,
   UseGuards,
@@ -14,6 +15,7 @@ import { ProviderRegistryService } from './provider-registry.service';
 import { ProviderNormalizationService } from './provider-normalization.service';
 import { ConsentsService } from '../consents/consents.service';
 import { SyncService } from '../sync/sync.service';
+import { OAuthStateService } from './oauth-state.service';
 import {
   AuthenticatedUser,
   CurrentUser,
@@ -32,6 +34,7 @@ export class ProvidersController {
     private readonly registry: ProviderRegistryService,
     private readonly consentsService: ConsentsService,
     private readonly syncService: SyncService,
+    private readonly oauthStateService: OAuthStateService,
   ) {}
 
   // Registering a new supported provider is a platform-config action,
@@ -55,8 +58,20 @@ export class ProvidersController {
     @CurrentUser() user: AuthenticatedUser | undefined,
   ) {
     assertSelfOrAdmin(user, userId);
+
+    // Resolve the provider row up front — the id becomes part of the
+    // signed state so the callback doesn't have to trust anything the
+    // caller sends.
+    const provider = await this.providersService.findBySlug(slug);
     const connector = this.registry.getConnector(slug);
-    const authUrl = await connector.getAuthorizationUrl(userId);
+
+    const state = this.oauthStateService.sign({
+      userId,
+      providerId: provider.id,
+      slug,
+    });
+
+    const authUrl = await connector.getAuthorizationUrl(userId, state);
     return {
       provider: slug,
       authUrl,
@@ -65,28 +80,27 @@ export class ProvidersController {
 
   // The provider's OAuth redirect hits this route directly from the
   // browser/provider side — it cannot carry our JWT, so it must stay
-  // public. NOTE: this still uses hardcoded testUserId/testProviderId
-  // placeholders rather than real OAuth `state`-derived identity; that's
-  // a separate, pre-existing correctness bug (every callback currently
-  // attaches to the same fake user/provider) and needs its own fix.
+  // public. Identity/authorization instead comes from the signed `state`
+  // token minted in connect() above: it's verified here, so the userId
+  // and providerId used to record consent and enqueue sync are exactly
+  // the ones the authenticated caller requested — not caller-supplied
+  // and not hardcoded.
   @Public()
   @Get(':slug/callback/:code')
   @HttpCode(HttpStatus.ACCEPTED)
-  async callback(@Param('slug') slug: string, @Param('code') code: string) {
-    const connector = this.registry.getConnector(slug);
+  async callback(
+    @Param('slug') slug: string,
+    @Param('code') code: string,
+    @Query('state') state: string,
+  ) {
+    const { userId, providerId } = this.oauthStateService.verify(state, slug);
 
+    const connector = this.registry.getConnector(slug);
     const token = await connector.exchangeToken(code);
 
-    const testUserId = 'user-123';
-    const testProviderId = 'provider-uuid-abc-123';
+    await this.consentsService.createConsent(userId, providerId, token);
 
-    await this.consentsService.createConsent(testUserId, testProviderId, token);
-
-    await this.syncService.enqueueInitialSync(
-      testUserId,
-      testProviderId,
-      token,
-    );
+    await this.syncService.enqueueInitialSync(userId, providerId);
 
     return {
       status: 'accepted',

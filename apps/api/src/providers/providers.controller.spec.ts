@@ -5,6 +5,7 @@ import { ProviderNormalizationService } from './provider-normalization.service';
 import { ProviderRegistryService } from './provider-registry.service';
 import { ConsentsService } from '../consents/consents.service';
 import { SyncService } from '../sync/sync.service';
+import { OAuthStateService } from './oauth-state.service';
 
 describe('ProvidersController', () => {
   let controller: ProvidersController;
@@ -18,6 +19,7 @@ describe('ProvidersController', () => {
           useValue: {
             create: jest.fn(),
             findAll: jest.fn(),
+            findBySlug: jest.fn(),
           },
         },
         {
@@ -44,6 +46,13 @@ describe('ProvidersController', () => {
           provide: SyncService,
           useValue: {
             enqueueInitialSync: jest.fn(),
+          },
+        },
+        {
+          provide: OAuthStateService,
+          useValue: {
+            sign: jest.fn(),
+            verify: jest.fn(),
           },
         },
       ],
