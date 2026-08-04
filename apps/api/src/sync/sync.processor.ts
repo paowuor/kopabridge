@@ -14,7 +14,16 @@ export class SyncProcessor extends WorkerHost {
     this.logger.log(
       `[Job Started] Processing job #${job.id} of type: "${job.name}"`,
     );
-    this.logger.debug(`Job Payload Context: ${JSON.stringify(job.data)}`);
+    // Do NOT log job.data verbatim — it carries the provider access token
+    // in plaintext (see SyncService.enqueueInitialSync). Log only the
+    // non-sensitive identifiers.
+    const { userId, providerId } = (job.data ?? {}) as {
+      userId?: string;
+      providerId?: string;
+    };
+    this.logger.debug(
+      `Job Payload Context: userId=${userId ?? 'n/a'} providerId=${providerId ?? 'n/a'}`,
+    );
 
     switch (job.name) {
       case 'initial-sync':
