@@ -3,9 +3,9 @@ import { ProviderConnector } from './provider.connector';
 
 @Injectable()
 export class MkopaConnector implements ProviderConnector {
-  getAuthorizationUrl(userId: string): Promise<string> {
+  getAuthorizationUrl(userId: string, state: string): Promise<string> {
     return Promise.resolve(
-      `https://mock-mkopa-oauth.com/auth?client_id=kopabridge&user=${userId}`,
+      `https://mock-mkopa-oauth.com/auth?client_id=kopabridge&user=${userId}&state=${encodeURIComponent(state)}`,
     );
   }
 
