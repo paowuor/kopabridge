@@ -9,6 +9,7 @@ import { AuthModule } from './auth/auth.module';
 import appConfig from './config/app.config';
 import { APP_GUARD } from '@nestjs/core';
 import { RolesGuard } from './auth/guards/roles.guard';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { ProvidersModule } from './providers/providers.module';
 import { EnergyAccountsModule } from './energy-accounts/energy-accounts.module';
 import { PaymentsModule } from './payments/payments.module';
@@ -52,6 +53,13 @@ import { SyncModule } from './sync/sync.module';
   controllers: [AppController],
   providers: [
     AppService,
+    // Order matters: JwtAuthGuard runs first so req.user is populated
+    // before RolesGuard checks role metadata. Every route is
+    // authenticated by default — opt out with @Public().
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
