@@ -1,21 +1,31 @@
-import { Injectable, NestMiddleware } from '@nestjs/common';
+import { Injectable, NestMiddleware, Logger } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
-import { randomUUID } from 'crypto';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class LoggerMiddleware implements NestMiddleware {
-  use(req: Request, res: Response, next: NextFunction) {
-    const requestId = randomUUID().slice(0, 8);
+  private readonly logger = new Logger('HTTP');
+
+  use(req: Request, res: Response, next: NextFunction): void {
+    const requestId = (req.headers['x-request-id'] as string) || uuidv4();
+    req.headers['x-request-id'] = requestId;
+    res.setHeader('X-Request-ID', requestId);
+
+    const { method, originalUrl, ip } = req;
     const start = Date.now();
 
-    req['requestId'] = requestId;
-
     res.on('finish', () => {
+      const { statusCode } = res;
       const duration = Date.now() - start;
+      const logMessage = `[${requestId}]${method} ${originalUrl}${statusCode} - ${duration}ms - IP:${ip}`;
 
-      console.log(
-        `[REQ-${requestId}] ${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms`,
-      );
+      if (statusCode >= 500) {
+        this.logger.error(logMessage);
+      } else if (statusCode >= 400) {
+        this.logger.warn(logMessage);
+      } else {
+        this.logger.log(logMessage);
+      }
     });
 
     next();
