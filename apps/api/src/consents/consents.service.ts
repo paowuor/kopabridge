@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { VaultService } from '../vault/vault.service';
 
@@ -8,6 +8,23 @@ export class ConsentsService {
     private readonly prisma: PrismaService,
     private readonly vaultService: VaultService,
   ) {}
+
+  /**
+   * Fetches the bare consent record (no decrypted token) so callers can
+   * check ownership before deciding whether to allow a mutation.
+   */
+  async findConsentOwner(id: string) {
+    const consent = await this.prisma.providerConsent.findUnique({
+      where: { id },
+      select: { id: true, userId: true },
+    });
+
+    if (!consent) {
+      throw new NotFoundException('Consent not found');
+    }
+
+    return consent;
+  }
 
   async createConsent(userId: string, providerId: string, accessToken: string) {
     const encryptedToken = this.vaultService.encrypt(accessToken);
