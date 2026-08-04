@@ -25,4 +25,15 @@ export class PaymentsService {
       },
     });
   }
+
+  async findAllForUser(userId: string) {
+    return this.prisma.paymentHistory.findMany({
+      where: {
+        energyAccount: { userId },
+      },
+      include: {
+        energyAccount: true,
+      },
+    });
+  }
 }
