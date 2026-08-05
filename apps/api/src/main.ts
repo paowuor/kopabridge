@@ -2,6 +2,7 @@ import { join } from 'path';
 import { LogLevel, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
@@ -18,7 +19,28 @@ async function bootstrap() {
 
   app.useStaticAssets(join(__dirname, '..', 'public'));
 
+  // Security headers (CSP, HSTS, X-Frame-Options, etc). Was a declared
+  // dependency but never actually wired in.
+  app.use(helmet());
+
+  // CORS_ORIGIN was documented in .env.example but never read anywhere.
+  // Supports a comma-separated list of allowed origins; falls back to
+  // disallowing cross-origin requests if unset, rather than silently
+  // allowing everything.
+  const corsOrigin = process.env.CORS_ORIGIN;
+  app.enableCors({
+    origin: corsOrigin ? corsOrigin.split(',').map((o) => o.trim()) : false,
+    credentials: true,
+  });
+
   app.useGlobalFilters(new HttpExceptionFilter());
+
+  // All routes are versioned under /api/v1 except health/metrics, which
+  // orchestrators and monitoring tools expect at a stable, unversioned
+  // path.
+  app.setGlobalPrefix('api/v1', {
+    exclude: ['health', 'metrics'],
+  });
 
   const config = new DocumentBuilder()
     .setTitle('KopaBridge API')
