@@ -21,5 +21,8 @@ done
 
 echo "=> Migrations applied successfully"
 
+echo "=> Seeding demo data"
+node prisma/seeds/seed.cjs
+
 echo "=> Starting application"
 exec node dist/src/main.js
