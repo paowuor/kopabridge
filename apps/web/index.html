@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KopaBridge — Sign in</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-brand"><span class="bolt">⚡</span>KopaBridge</div>
+      <p class="auth-tagline">Credit intelligence for pay-as-you-go energy customers.</p>
+
+      <div class="tabs">
+        <button class="tab-btn active" id="tab-login" onclick="showTab('login')">Sign in</button>
+        <button class="tab-btn" id="tab-register" onclick="showTab('register')">Create account</button>
+      </div>
+
+      <div id="msg-area"></div>
+
+      <form id="login-form">
+        <div class="field">
+          <label for="login-email">Email</label>
+          <input id="login-email" type="email" required autocomplete="username" />
+        </div>
+        <div class="field">
+          <label for="login-password">Password</label>
+          <input id="login-password" type="password" required autocomplete="current-password" />
+        </div>
+        <button class="btn sun" type="submit" id="login-submit">Sign in</button>
+      </form>
+
+      <form id="register-form" style="display:none">
+        <div class="field">
+          <label for="register-email">Email</label>
+          <input id="register-email" type="email" required autocomplete="username" />
+        </div>
+        <div class="field">
+          <label for="register-password">Password</label>
+          <input id="register-password" type="password" required minlength="6" autocomplete="new-password" />
+        </div>
+        <button class="btn sun" type="submit" id="register-submit">Create account</button>
+      </form>
+
+      <div class="hint">
+        demo user &nbsp;·&nbsp; demo@kopabridge.com / password123<br />
+        demo admin &nbsp;·&nbsp; admin@kopabridge.com / admin123
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/app.js"></script>
+  <script>
+    // If already signed in, skip straight to the dashboard.
+    if (getCurrentUser()) {
+      window.location.href = 'dashboard.html';
+    }
+
+    function showTab(which) {
+      const isLogin = which === 'login';
+      document.getElementById('tab-login').classList.toggle('active', isLogin);
+      document.getElementById('tab-register').classList.toggle('active', !isLogin);
+      document.getElementById('login-form').style.display = isLogin ? 'block' : 'none';
+      document.getElementById('register-form').style.display = isLogin ? 'none' : 'block';
+      document.getElementById('msg-area').innerHTML = '';
+    }
+
+    function showMsg(text, kind) {
+      document.getElementById('msg-area').innerHTML =
+        `<div class="msg ${kind}">${escapeHtml(text)}</div>`;
+    }
+
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      const btn = document.getElementById('login-submit');
+      btn.disabled = true;
+      btn.textContent = 'Signing in…';
+      try {
+        const res = await apiFetch('/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({ email, password }),
+        });
+        setToken(res.access_token);
+        window.location.href = 'dashboard.html';
+      } catch (err) {
+        showMsg(err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Sign in';
+      }
+    });
+
+    document.getElementById('register-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('register-email').value.trim();
+      const password = document.getElementById('register-password').value;
+      const btn = document.getElementById('register-submit');
+      btn.disabled = true;
+      btn.textContent = 'Creating account…';
+      try {
+        await apiFetch('/auth/register', {
+          method: 'POST',
+          body: JSON.stringify({ email, password }),
+        });
+        document.getElementById('login-email').value = email;
+        showTab('login');
+        showMsg('Account created — sign in below.', 'ok');
+      } catch (err) {
+        showMsg(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Create account';
+      }
+    });
+  </script>
+</body>
+</html>
