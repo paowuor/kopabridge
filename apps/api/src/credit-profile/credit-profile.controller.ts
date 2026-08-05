@@ -6,7 +6,7 @@ import {
 } from '../auth/decorators/current-user.decorator';
 import { assertSelfOrAdmin } from '../common/utils/authorize-self-or-admin';
 
-@Controller('api/v1/credit-profile')
+@Controller('credit-profile')
 export class CreditProfileController {
   constructor(private readonly creditProfileService: CreditProfileService) {}
 
