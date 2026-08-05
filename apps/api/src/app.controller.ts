@@ -12,12 +12,7 @@ export class AppController {
     return this.appService.getHello();
   }
 
-  @Public()
-  @Get('health')
-  getHealth() {
-    return {
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-    };
-  }
+  // Removed the duplicate static `GET /health` that used to live here —
+  // it collided with HealthController's `GET /health`, which does a real
+  // Terminus-backed DB ping. Use that one instead.
 }
