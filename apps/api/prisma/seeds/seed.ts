@@ -19,6 +19,20 @@ async function main() {
     },
   });
 
+  // Demo admin — lets the frontend's admin view be demoed without any
+  // manual setup.
+  const adminPassword = await bcrypt.hash('admin123', 10);
+
+  await prisma.user.upsert({
+    where: { email: 'admin@kopabridge.com' },
+    update: {},
+    create: {
+      email: 'admin@kopabridge.com',
+      password: adminPassword,
+      role: 'admin',
+    },
+  });
+
   // Demo provider
   const provider = await prisma.provider.upsert({
     where: { slug: 'm-kopa' },
