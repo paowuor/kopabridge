@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Customer portal (`apps/web/`)** — a plain HTML/JS/CSS frontend, served
+  directly by nginx alongside the API. Covers register/login, connecting a
+  (mocked) M-KOPA account, viewing energy accounts, and a credit score
+  view rendered as a segmented meter. An admin view lists all users,
+  energy accounts, and recent payments platform-wide.
+- Seeded demo admin account (`admin@kopabridge.com` / `admin123`) so the
+  admin view is demoable without manual setup.
 - Global authentication by default: `JwtAuthGuard` now runs on every route
   unless explicitly opted out with `@Public()`.
 - Ownership checks (`assertSelfOrAdmin`) on `consents`, `credit-profile`,
@@ -30,6 +37,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   monitoring/ops endpoints rather than versioned public API).
 
 ### Fixed
+- Mock M-KOPA connector previously returned the same static account
+  number for every user, meaning a second real user connecting would
+  silently attach to the first user's energy account and payment
+  history. Fixed to derive a distinct mock account number per connection.
 - `POST /users` no longer stores passwords in plaintext.
 - `GET /users` no longer returns password hashes, and is now admin-only.
 - Duplicate `GET /health` route (defined in both `AppController` and
