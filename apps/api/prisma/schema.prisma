@@ -47,6 +47,9 @@ model EnergyAccount {
 
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
+
+  @@index([userId])
+  @@index([providerId])
 }
 
 model PaymentHistory {
@@ -62,6 +65,8 @@ model PaymentHistory {
   energyAccount    EnergyAccount @relation(fields: [energyAccountId], references: [id])
 
   createdAt        DateTime      @default(now())
+
+  @@index([energyAccountId])
 }
 
 model ProviderConsent {
@@ -80,4 +85,7 @@ model ProviderConsent {
 
   user         User     @relation(fields: [userId], references: [id])
   provider     Provider @relation(fields: [providerId], references: [id])
+
+  @@index([userId, revoked])
+  @@index([providerId])
 }
