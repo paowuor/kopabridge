@@ -1,0 +1,7 @@
+version: '3.9'
+
+services:
+  api:
+    command: sh -lc "npx prisma migrate deploy && exec node dist/src/main.js"
+    environment:
+      - NODE_ENV=production
