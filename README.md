@@ -31,6 +31,42 @@ cp apps/api/.env.example apps/api/.env
 ```bash
 cp .env.example .env
 ```
+```
+
+### Troubleshooting & quick checks
+
+If you see a 404 at `/`, remember the API is mounted under `/api/v1` and docs are at `/docs`. The repository now redirects root `/` to `/docs` via the included `nginx` config.
+
+Check running containers and follow logs:
+
+```bash
+docker compose ps
+docker compose logs -f api
+docker compose logs -f postgres
+docker compose logs -f redis
+docker compose logs -f nginx
+```
+
+Test the API endpoints:
+
+```bash
+curl -i http://localhost/docs
+curl -i http://localhost/health
+curl -i http://localhost/api/v1/health
+```
+
+Check Postgres from the `postgres` container (replace variables if you customized them):
+
+```bash
+docker compose exec postgres psql -U "$DB_USER" -d "$DB_NAME" -c '\dt'
+```
+
+Check Redis connectivity:
+
+```bash
+docker compose exec redis redis-cli ping
+```
+
 
 3. Update `.env` with your database credentials:
 
