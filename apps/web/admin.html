@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KopaBridge — Admin</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <div class="shell">
+    <div class="topbar">
+      <a class="brand" href="dashboard.html"><span class="bolt">⚡</span>KopaBridge</a>
+      <div class="topbar-right">
+        <span class="user-email" id="user-email"></span>
+        <span class="role-badge admin">admin</span>
+        <a class="btn ghost" href="dashboard.html">My dashboard</a>
+        <button class="btn ghost" onclick="logout()">Sign out</button>
+      </div>
+    </div>
+
+    <p class="section-title">All users</p>
+    <div class="card">
+      <div id="users-area"><p class="empty-state">Loading…</p></div>
+    </div>
+
+    <p class="section-title">All energy accounts</p>
+    <div class="card">
+      <div id="accounts-area"><p class="empty-state">Loading…</p></div>
+    </div>
+
+    <p class="section-title">Recent payments (platform-wide)</p>
+    <div class="card">
+      <div id="payments-area"><p class="empty-state">Loading…</p></div>
+    </div>
+  </div>
+
+  <script src="assets/app.js"></script>
+  <script>
+    const user = requireAuth();
+
+    if (user && requireAdmin(user)) {
+      document.getElementById('user-email').textContent = user.email;
+      loadUsers();
+      loadAccounts();
+      loadPayments();
+    }
+
+    async function loadUsers() {
+      const area = document.getElementById('users-area');
+      try {
+        const users = await apiFetch('/users');
+        if (!users.length) {
+          area.innerHTML = '<p class="empty-state">No users yet.</p>';
+          return;
+        }
+        area.innerHTML = `
+          <table>
+            <thead><tr><th>Email</th><th>Role</th><th>Joined</th></tr></thead>
+            <tbody>
+              ${users
+                .map(
+                  (u) => `
+                <tr>
+                  <td>${escapeHtml(u.email)}</td>
+                  <td><span class="pill ${u.role === 'admin' ? 'active' : ''}">${escapeHtml(u.role)}</span></td>
+                  <td>${formatDate(u.createdAt)}</td>
+                </tr>`,
+                )
+                .join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (err) {
+        area.innerHTML = `<p class="empty-state">Couldn't load users: ${escapeHtml(err.message)}</p>`;
+      }
+    }
+
+    async function loadAccounts() {
+      const area = document.getElementById('accounts-area');
+      try {
+        const accounts = await apiFetch('/energy-accounts');
+        if (!accounts.length) {
+          area.innerHTML = '<p class="empty-state">No energy accounts yet.</p>';
+          return;
+        }
+        area.innerHTML = `
+          <table>
+            <thead><tr><th>Owner</th><th>Account</th><th>Provider</th><th>Status</th></tr></thead>
+            <tbody>
+              ${accounts
+                .map(
+                  (a) => `
+                <tr>
+                  <td>${escapeHtml(a.user ? a.user.email : '—')}</td>
+                  <td class="mono">${escapeHtml(a.accountNumber)}</td>
+                  <td>${escapeHtml(a.provider ? a.provider.name : '—')}</td>
+                  <td><span class="pill ${a.isActive ? 'active' : 'inactive'}">${a.isActive ? 'active' : 'inactive'}</span></td>
+                </tr>`,
+                )
+                .join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (err) {
+        area.innerHTML = `<p class="empty-state">Couldn't load accounts: ${escapeHtml(err.message)}</p>`;
+      }
+    }
+
+    async function loadPayments() {
+      const area = document.getElementById('payments-area');
+      try {
+        const payments = await apiFetch('/payments');
+        if (!payments.length) {
+          area.innerHTML = '<p class="empty-state">No payments recorded yet.</p>';
+          return;
+        }
+        const recent = [...payments]
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+          .slice(0, 20);
+        area.innerHTML = `
+          <table>
+            <thead><tr><th>Account</th><th>Amount</th><th>Status</th><th>Due</th></tr></thead>
+            <tbody>
+              ${recent
+                .map(
+                  (p) => `
+                <tr>
+                  <td class="mono">${escapeHtml(p.energyAccount ? p.energyAccount.accountNumber : '—')}</td>
+                  <td>${escapeHtml(p.currency || 'KES')} ${p.amount}</td>
+                  <td><span class="pill ${statusClass(p.status)}">${escapeHtml(p.status)}</span></td>
+                  <td>${formatDate(p.dueDate)}</td>
+                </tr>`,
+                )
+                .join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (err) {
+        area.innerHTML = `<p class="empty-state">Couldn't load payments: ${escapeHtml(err.message)}</p>`;
+      }
+    }
+  </script>
+</body>
+</html>
