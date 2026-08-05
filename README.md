@@ -10,6 +10,33 @@ An enterprise-grade financial middleware and data verification layer connecting 
 
 Unified Energy API infrastructure for alternative credit scoring from PAYGo solar and IoT energy systems.
 
+## Using the app
+
+Once the stack is running, the customer portal is served directly at the
+root domain — no separate frontend deployment needed:
+
+- **Customer portal:** http://localhost/ — register or sign in, connect a
+  (mocked) M-KOPA account, and see a live credit score.
+- **Swagger / API docs:** http://localhost/docs
+- **Health check:** http://localhost/health
+
+Demo accounts (seeded by `prisma/seeds/seed.ts`):
+
+| Role  | Email                  | Password    |
+|-------|------------------------|-------------|
+| user  | demo@kopabridge.com    | password123 |
+| admin | admin@kopabridge.com   | admin123    |
+
+The demo user already has a connected M-KOPA account with payment
+history and a calculated credit score, so the dashboard has something to
+show immediately. Signing in as the admin account surfaces an **Admin**
+link to a platform-wide view of all users, energy accounts, and recent
+payments.
+
+The M-KOPA connection itself is currently mocked (see `MkopaConnector`) —
+clicking "Connect M-KOPA" simulates the OAuth round trip and generates
+synthetic payment history rather than calling a real M-KOPA API.
+
 ## Deployment
 
 ### Requirements
@@ -35,7 +62,8 @@ cp .env.example .env
 
 ### Troubleshooting & quick checks
 
-If you see a 404 at `/`, remember the API is mounted under `/api/v1` and docs are at `/docs`. The repository now redirects root `/` to `/docs` via the included `nginx` config.
+The customer portal is served at `/`, the API lives under `/api/v1`, and
+docs are at `/docs`.
 
 Check running containers and follow logs:
 
@@ -50,9 +78,10 @@ docker compose logs -f nginx
 Test the API endpoints:
 
 ```bash
+curl -i http://localhost/
 curl -i http://localhost/docs
 curl -i http://localhost/health
-curl -i http://localhost/api/v1/health
+curl -i http://localhost/api/v1/providers
 ```
 
 Check Postgres from the `postgres` container (replace variables if you customized them):
@@ -84,7 +113,7 @@ docker compose up --build
 
 5. Verify service availability:
 
-- API: http://localhost/
+- Customer portal: http://localhost/
 - Swagger docs: http://localhost/docs
 - Health: http://localhost/health
 
