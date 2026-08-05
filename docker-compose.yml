@@ -63,6 +63,7 @@ services:
       - "80:80"
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./apps/web:/usr/share/nginx/html:ro
     depends_on:
       api:
         condition: service_started
