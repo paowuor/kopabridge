@@ -1,0 +1,78 @@
+databases:
+  - name: kopabridge-db
+    databaseName: kopabridge
+    user: kopabridge
+    plan: starter          # "free" works too, but expires after 30 days
+    region: oregon
+
+services:
+  # ---- Redis (replaces the `redis` container) ----
+  - type: keyvalue
+    name: kopabridge-redis
+    plan: starter           # free tier has no persistence — fine for a cache,
+                             # risky for a job queue (jobs can be dropped)
+    region: oregon
+    maxmemoryPolicy: noeviction   # BullMQ queue: don't evict pending jobs
+    ipAllowList: []          # internal-only, no external access
+
+  # ---- NestJS API (replaces the `api` container) ----
+  - type: web
+    name: kopabridge-api
+    runtime: docker
+    region: oregon
+    plan: starter
+    dockerContext: ./apps/api
+    dockerfilePath: ./apps/api/Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: kopabridge-db
+          property: connectionString
+      - key: REDIS_HOST
+        fromService:
+          type: keyvalue
+          name: kopabridge-redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: keyvalue
+          name: kopabridge-redis
+          property: port
+      - key: JWT_SECRET
+        generateValue: true
+      # Must be a 64-char hex string (openssl rand -hex 32) — Render's
+      # auto-generated secrets are base64, not hex, so this one has to be
+      # supplied by hand on first deploy.
+      - key: TOKEN_ENCRYPTION_KEY
+        sync: false
+      # Left unset on purpose: the web service below proxies /api, /docs and
+      # /health through itself, so browser requests are same-origin and CORS
+      # never comes into play. Set this only if something calls the API
+      # cross-origin directly.
+      # - key: CORS_ORIGIN
+      #   value: https://your-frontend-domain.com
+
+  # ---- Static portal (replaces the `nginx` container) ----
+  - type: web
+    name: kopabridge-web
+    runtime: static
+    staticPublishPath: ./apps/web
+    buildCommand: "true"     # plain HTML/JS/CSS, nothing to build
+    routes:
+      # Mirrors nginx/conf.d/default.conf: everything except the static
+      # assets themselves gets proxied to the API service.
+      - type: rewrite
+        source: /api/*
+        destination: https://${kopabridge-api.publicHost}/api/*
+      - type: rewrite
+        source: /docs
+        destination: https://${kopabridge-api.publicHost}/docs
+      - type: rewrite
+        source: /docs-json
+        destination: https://${kopabridge-api.publicHost}/docs-json
+      - type: rewrite
+        source: /health
+        destination: https://${kopabridge-api.publicHost}/health
