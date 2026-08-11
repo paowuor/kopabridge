@@ -6,7 +6,7 @@ This repository can deploy to Railway using a single Docker service for the API 
 
 - Build context: `.`
 - Dockerfile path: `apps/api/Dockerfile`
-- Start command: default entrypoint from Dockerfile
+- Start command: `./start.sh`
 - Port: `3000`
 
 ## Required Railway plugins
