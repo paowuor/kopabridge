@@ -1,5 +1,5 @@
-#!/bin/bash
-set -euo pipefail
+#!/bin/sh
+set -eu
 
 cd /usr/src/app
-exec /bin/bash ./docker-entrypoint.sh
+exec ./docker-entrypoint.sh
