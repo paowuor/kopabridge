@@ -132,6 +132,27 @@ This file uses:
 - root-level secret interpolation from `.env`
 - `apps/api/.env` for API runtime values
 
+### Railway deployment
+
+This repository is now Railway-ready using the API Docker image and the static portal served from `apps/api/public`.
+
+1. Create a new Railway project.
+2. Add a PostgreSQL plugin and a Redis plugin.
+3. Create a Docker service using:
+   - build context: `.`
+   - dockerfile path: `apps/api/Dockerfile`
+4. Set environment variables for the service:
+   - `NODE_ENV=production`
+   - `PORT=3000`
+   - `DATABASE_URL` from the PostgreSQL plugin
+   - `REDIS_HOST` from the Redis plugin host
+   - `REDIS_PORT` from the Redis plugin port
+   - `JWT_SECRET` (random secret)
+   - `TOKEN_ENCRYPTION_KEY` (generate with `openssl rand -hex 32`)
+5. Deploy and visit the Railway service URL.
+
+Because the portal is copied into the API image, no separate nginx or static web service is required. The app will serve the customer portal at `/`, the API at `/api/v1`, and docs at `/docs`.
+
 ### What this repository now does
 
 - `docker-compose.override.yml` automatically runs `npx prisma migrate deploy` before the API starts.
