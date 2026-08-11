@@ -1,9 +1,8 @@
 #!/bin/sh
-set -euo pipefail
+set -eu
 
 echo "=> Starting container entrypoint"
 
-# Retry loop for running Prisma migrations until database is reachable and migrations succeed.
 MAX_RETRIES=${MAX_RETRIES:-30}
 SLEEP_SECONDS=${SLEEP_SECONDS:-2}
 retries=0
