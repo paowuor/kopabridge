@@ -7,12 +7,18 @@ WORKDIR /usr/src/app
 
 RUN apk add --no-cache libc6-compat
 
-COPY package*.json ./
-COPY prisma ./prisma/
+COPY apps/api/package.json ./
+COPY apps/api/package-lock.json ./
+COPY apps/api/prisma ./prisma/
+COPY apps/api/tsconfig*.json ./
+COPY apps/api/nest-cli.json ./
+COPY apps/api/docker-entrypoint.sh ./
 
 RUN npm ci
 
-COPY . .
+COPY apps/api/src ./src
+COPY apps/api/public/. ./public
+COPY apps/web/. ./public
 
 # Generate client directly into node_modules
 RUN npx prisma generate
@@ -35,8 +41,9 @@ WORKDIR /usr/src/app
 COPY --from=builder /usr/src/app/node_modules ./node_modules
 COPY --from=builder /usr/src/app/dist ./dist
 COPY --from=builder /usr/src/app/prisma ./prisma
+COPY --from=builder /usr/src/app/public ./public
 COPY --from=builder /usr/src/app/package*.json ./
-COPY docker-entrypoint.sh ./
+COPY --from=builder /usr/src/app/docker-entrypoint.sh ./
 
 RUN chmod +x ./docker-entrypoint.sh
 
