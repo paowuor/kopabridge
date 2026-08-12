@@ -30,10 +30,16 @@ import { SyncModule } from './sync/sync.module';
     BullModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
-        connection: {
-          host: configService.get<string>('redis.host'),
-          port: configService.get<number>('redis.port'),
-        },
+        // Support either a full Redis URL (e.g. from Railway) or host/port
+        // environment variables for local/docker setups.
+        ...(configService.get<string>('redis.url')
+          ? { connection: { url: configService.get<string>('redis.url') } }
+          : {
+              connection: {
+                host: configService.get<string>('redis.host'),
+                port: configService.get<number>('redis.port'),
+              },
+            }),
       }),
       inject: [ConfigService],
     }),
