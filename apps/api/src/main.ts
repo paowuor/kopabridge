@@ -75,6 +75,7 @@ async function bootstrap() {
         const port = parsed.port || '6379';
         const hasAuth = parsed.password ? 'yes' : 'no';
         console.log(`Redis config: url host=${host} port=${port} auth=${hasAuth}`);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (_) {
         console.log('Redis config: REDIS_URL present but invalid');
       }
@@ -83,6 +84,7 @@ async function bootstrap() {
       const port = configService.get<number>('redis.port');
       console.log(`Redis config: host=${host} port=${port}`);
     }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (_) {
     // If ConfigService isn't available for some reason, fall back to env.
     console.log('Redis config: ', process.env.REDIS_URL ?? `${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`);
