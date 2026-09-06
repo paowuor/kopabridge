@@ -84,5 +84,11 @@ export default () => {
     vault: {
       encryptionKey,
     },
+
+    metrics: {
+      // Optional static bearer token protecting the Prometheus /metrics
+      // endpoint. When unset the endpoint rejects all requests (fail closed).
+      token: process.env.METRICS_TOKEN?.trim() || null,
+    },
   };
 };
