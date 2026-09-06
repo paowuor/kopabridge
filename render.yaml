@@ -21,7 +21,7 @@ services:
     runtime: docker
     region: oregon
     plan: starter
-    dockerContext: ./apps/api
+    dockerContext: .
     dockerfilePath: ./apps/api/Dockerfile
     healthCheckPath: /health
     envVars:
@@ -48,6 +48,10 @@ services:
       # supplied by hand on first deploy.
       - key: TOKEN_ENCRYPTION_KEY
         sync: false
+      # Static bearer token for the /metrics endpoint. Leave unset to keep
+      # metrics fully disabled (the endpoint rejects all requests then).
+      - key: METRICS_TOKEN
+        generateValue: true
       # Left unset on purpose: the web service below proxies /api, /docs and
       # /health through itself, so browser requests are same-origin and CORS
       # never comes into play. Set this only if something calls the API
