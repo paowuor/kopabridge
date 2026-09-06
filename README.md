@@ -53,49 +53,11 @@ synthetic payment history rather than calling a real M-KOPA API.
 cp apps/api/.env.example apps/api/.env
 ```
 
-2. Create the root Compose env example:
+2. Create the root Compose env file:
 
 ```bash
 cp .env.example .env
 ```
-```
-
-### Troubleshooting & quick checks
-
-The customer portal is served at `/`, the API lives under `/api/v1`, and
-docs are at `/docs`.
-
-Check running containers and follow logs:
-
-```bash
-docker compose ps
-docker compose logs -f api
-docker compose logs -f postgres
-docker compose logs -f redis
-docker compose logs -f nginx
-```
-
-Test the API endpoints:
-
-```bash
-curl -i http://localhost/
-curl -i http://localhost/docs
-curl -i http://localhost/health
-curl -i http://localhost/api/v1/providers
-```
-
-Check Postgres from the `postgres` container (replace variables if you customized them):
-
-```bash
-docker compose exec postgres psql -U "$DB_USER" -d "$DB_NAME" -c '\dt'
-```
-
-Check Redis connectivity:
-
-```bash
-docker compose exec redis redis-cli ping
-```
-
 
 3. Update `.env` with your database credentials:
 
@@ -105,13 +67,17 @@ DB_PASSWORD=your_password
 DB_NAME=kopabridge
 ```
 
-4. Start the stack:
+4. (Optional) In `apps/api/.env`, replace the dev-only `TOKEN_ENCRYPTION_KEY`
+   placeholder with a freshly generated one (`openssl rand -hex 32`) if you
+   plan to share this environment or run it against real data.
+
+5. Start the stack:
 
 ```bash
 docker compose up --build
 ```
 
-5. Verify service availability:
+6. Verify service availability:
 
 - Customer portal: http://localhost/
 - Swagger docs: http://localhost/docs
@@ -155,7 +121,7 @@ Because the portal is copied into the API image, no separate nginx or static web
 
 ### What this repository now does
 
-- `docker-compose.override.yml` automatically runs `npx prisma migrate deploy` before the API starts.
+- The API container's `docker-entrypoint.sh` runs `npx prisma migrate deploy` (with retries) before the application starts.
 - The API configuration loader now validates required production environment values before Nest boots.
 
 ### Important production notes
