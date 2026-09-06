@@ -1,6 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
@@ -19,6 +20,7 @@ import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { ConsentsModule } from './consents/consents.module';
 import { VaultModule } from './vault/vault.module';
 import { SyncModule } from './sync/sync.module';
+import { MetricsModule } from './metrics/metrics.module';
 
 @Module({
   imports: [
@@ -44,6 +46,13 @@ import { SyncModule } from './sync/sync.module';
       inject: [ConfigService],
     }),
 
+    // Global rate limiting. The default (300 req/60s per IP) protects the
+    // API as a whole; tighter limits are applied per-route on sensitive
+    // endpoints such as /auth/login and /auth/register.
+    ThrottlerModule.forRoot({
+      throttlers: [{ ttl: 60000, limit: 300 }],
+    }),
+
     UsersModule,
     PrismaModule,
     AuthModule,
@@ -55,6 +64,7 @@ import { SyncModule } from './sync/sync.module';
     ConsentsModule,
     VaultModule,
     SyncModule,
+    MetricsModule,
   ],
   controllers: [AppController],
   providers: [
@@ -69,6 +79,10 @@ import { SyncModule } from './sync/sync.module';
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
     },
   ],
 })
