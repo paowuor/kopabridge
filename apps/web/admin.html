@@ -48,7 +48,7 @@
     async function loadUsers() {
       const area = document.getElementById('users-area');
       try {
-        const users = await apiFetch('/users');
+        const users = (await apiFetch('/users')).data || [];
         if (!users.length) {
           area.innerHTML = '<p class="empty-state">No users yet.</p>';
           return;
