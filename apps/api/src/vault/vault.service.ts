@@ -10,7 +10,7 @@ export class VaultService {
   private readonly tagLength = 16; // Standard authentication tag length
 
   constructor(private readonly configService: ConfigService) {
-    const keyHex = this.configService.get<string>('TOKEN_ENCRYPTION_KEY');
+    const keyHex = this.configService.get<string>('vault.encryptionKey');
 
     if (!keyHex || keyHex.length !== 64) {
       throw new InternalServerErrorException(
