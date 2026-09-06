@@ -50,19 +50,21 @@ export class ConsentsService {
   }
 
   async findActiveConsents(userId: string) {
-    const consents = await this.prisma.providerConsent.findMany({
+    return this.prisma.providerConsent.findMany({
       where: {
         userId,
         revoked: false,
+        expiresAt: { gt: new Date() },
       },
-      include: {
+      select: {
+        id: true,
+        userId: true,
+        providerId: true,
+        expiresAt: true,
+        revoked: true,
+        createdAt: true,
         provider: true,
       },
     });
-
-    return consents.map((consent) => ({
-      ...consent,
-      accessToken: this.vaultService.decrypt(consent.accessToken),
-    }));
   }
 }
