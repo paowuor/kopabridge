@@ -20,8 +20,10 @@ done
 
 echo "=> Migrations applied successfully"
 
-echo "=> Seeding demo data"
-node prisma/seeds/seed.cjs
+if [ "${SEED_DEMO_DATA:-false}" = "true" ]; then
+  echo "=> SEED_DEMO_DATA=true, seeding demo data"
+  node prisma/seeds/seed.cjs
+fi
 
 echo "=> Starting application"
 exec node dist/src/main.js
