@@ -20,7 +20,7 @@ root domain — no separate frontend deployment needed:
 - **Swagger / API docs:** http://localhost/docs
 - **Health check:** http://localhost/health
 
-Demo accounts (seeded by `prisma/seeds/seed.ts`):
+Demo accounts (seeded by `prisma/seeds/seed.ts` when `SEED_DEMO_DATA=true` is set):
 
 | Role  | Email                  | Password    |
 |-------|------------------------|-------------|
