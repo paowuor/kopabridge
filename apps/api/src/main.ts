@@ -18,11 +18,26 @@ async function bootstrap() {
     logger: logLevels,
   });
 
-  app.useStaticAssets(join(__dirname, '..', 'public'));
+  app.useStaticAssets(join(__dirname, '..', '..', 'public'));
 
-  // Security headers (CSP, HSTS, X-Frame-Options, etc). Was a declared
-  // dependency but never actually wired in.
-  app.use(helmet());
+  // Security headers (CSP, HSTS, X-Frame-Options, etc). The CSP allows
+  // 'unsafe-inline' for scripts and styles because the served portal uses
+  // inline <script> blocks and onclick handlers. In the nginx-deployed
+  // layout this CSP is not applied (nginx serves the portal directly).
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'"],
+          styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+          fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+          imgSrc: ["'self'", 'data:'],
+          connectSrc: ["'self'"],
+        },
+      },
+    }),
+  );
 
   // CORS_ORIGIN was documented in .env.example but never read anywhere.
   // Supports a comma-separated list of allowed origins; falls back to
