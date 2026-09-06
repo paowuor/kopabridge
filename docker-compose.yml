@@ -45,6 +45,7 @@ services:
       - "3000"
     environment:
       NODE_ENV: production
+      SEED_DEMO_DATA: true
       DATABASE_URL: "postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-kopabridge}?schema=public"
       REDIS_HOST: redis
       REDIS_PORT: 6379
