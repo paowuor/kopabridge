@@ -1,5 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { ProvidersController } from './providers.controller';
 import { ProvidersService } from './providers.service';
 import { PrismaModule } from '../prisma/prisma.module';
@@ -18,9 +19,12 @@ import { OAuthStateService } from './oauth-state.service';
     forwardRef(() => SyncModule),
     // Dedicated, short-lived token for the OAuth `state` param — kept
     // separate from the long-lived login JWT issued by AuthModule.
-    JwtModule.register({
-      secret: process.env.JWT_SECRET,
-      signOptions: { expiresIn: '10m' },
+    JwtModule.registerAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get<string>('jwt.secret'),
+        signOptions: { expiresIn: '10m' },
+      }),
     }),
   ],
   controllers: [ProvidersController],
