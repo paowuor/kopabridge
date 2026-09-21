@@ -19,8 +19,7 @@ async function main() {
     },
   });
 
-  // Demo admin — lets the frontend's admin view be demoed without any
-  // manual setup.
+  // Demo admin — lets admin-role endpoints be demoed without manual setup.
   const adminPassword = await bcrypt.hash('admin123', 10);
 
   await prisma.user.upsert({

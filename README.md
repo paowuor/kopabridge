@@ -10,15 +10,13 @@ An enterprise-grade financial middleware and data verification layer connecting 
 
 Unified Energy API infrastructure for alternative credit scoring from PAYGo solar and IoT energy systems.
 
-## Using the app
+## Using the API
 
-Once the stack is running, the customer portal is served directly at the
-root domain — no separate frontend deployment needed:
+Once the stack is running, the API and its documentation are accessible directly:
 
-- **Customer portal:** http://localhost/ — register or sign in, connect a
-  (mocked) M-KOPA account, and see a live credit score.
-- **Swagger / API docs:** http://localhost/docs
-- **Health check:** http://localhost/health
+- **Swagger / API docs:** http://localhost/docs (or http://localhost:3000/docs)
+- **API Base:** http://localhost/api/v1 (or http://localhost:3000/api/v1)
+- **Health check:** http://localhost/health (or http://localhost:3000/health)
 
 Demo accounts (seeded by `prisma/seeds/seed.ts` when `SEED_DEMO_DATA=true` is set):
 
@@ -27,14 +25,12 @@ Demo accounts (seeded by `prisma/seeds/seed.ts` when `SEED_DEMO_DATA=true` is se
 | user  | demo@kopabridge.com    | password123 |
 | admin | admin@kopabridge.com   | admin123    |
 
-The demo user already has a connected M-KOPA account with payment
-history and a calculated credit score, so the dashboard has something to
-show immediately. Signing in as the admin account surfaces an **Admin**
-link to a platform-wide view of all users, energy accounts, and recent
-payments.
+The demo user has a connected M-KOPA account with payment
+history and a calculated credit score for testing endpoints. The admin account
+can access administrative endpoints (e.g. `GET /api/v1/users`).
 
 The M-KOPA connection itself is currently mocked (see `MkopaConnector`) —
-clicking "Connect M-KOPA" simulates the OAuth round trip and generates
+connecting simulates the OAuth round trip and generates
 synthetic payment history rather than calling a real M-KOPA API.
 
 ## Deployment
@@ -79,9 +75,9 @@ docker compose up --build
 
 6. Verify service availability:
 
-- Customer portal: http://localhost/
-- Swagger docs: http://localhost/docs
-- Health: http://localhost/health
+- Swagger docs: http://localhost/docs (or http://localhost:3000/docs)
+- Health: http://localhost/health (or http://localhost:3000/health)
+- API: http://localhost:3000/api/v1
 
 ### Production compose
 
@@ -97,27 +93,6 @@ This file uses:
 - explicit production `NODE_ENV`
 - root-level secret interpolation from `.env`
 - `apps/api/.env` for API runtime values
-
-### Railway deployment
-
-This repository is now Railway-ready using the API Docker image and the static portal served from `apps/api/public`.
-
-1. Create a new Railway project.
-2. Add a PostgreSQL plugin and a Redis plugin.
-3. Create a Docker service using:
-   - build context: `.`
-   - dockerfile path: `apps/api/Dockerfile`
-4. Set environment variables for the service:
-   - `NODE_ENV=production`
-   - `PORT=3000`
-   - `DATABASE_URL` from the PostgreSQL plugin
-   - `REDIS_HOST` from the Redis plugin host
-   - `REDIS_PORT` from the Redis plugin port
-   - `JWT_SECRET` (random secret)
-   - `TOKEN_ENCRYPTION_KEY` (generate with `openssl rand -hex 32`)
-5. Deploy and visit the Railway service URL.
-
-Because the portal is copied into the API image, no separate nginx or static web service is required. The app will serve the customer portal at `/`, the API at `/api/v1`, and docs at `/docs`.
 
 ### What this repository now does
 

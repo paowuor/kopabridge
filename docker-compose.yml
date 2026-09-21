@@ -41,8 +41,8 @@ services:
     container_name: kopabridge-api
     env_file:
       - ./apps/api/.env
-    expose:
-      - "3000"
+    ports:
+      - "3000:3000"
     environment:
       NODE_ENV: production
       SEED_DEMO_DATA: true
@@ -64,7 +64,6 @@ services:
       - "80:80"
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./apps/web:/usr/share/nginx/html:ro
     depends_on:
       api:
         condition: service_started

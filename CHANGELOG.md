@@ -7,14 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Removed
+- Frontend customer portal (`apps/web/`) and static asset hosting from the API.
+- Render deployment configuration (`render.yaml`).
+- Railway deployment configuration (`railway-deploy.md`, `start.sh`, and Railway-specific runtime verification).
+
 ### Added
-- **Customer portal (`apps/web/`)** — a plain HTML/JS/CSS frontend, served
-  directly by nginx alongside the API. Covers register/login, connecting a
-  (mocked) M-KOPA account, viewing energy accounts, and a credit score
-  view rendered as a segmented meter. An admin view lists all users,
-  energy accounts, and recent payments platform-wide.
 - Seeded demo admin account (`admin@kopabridge.com` / `admin123`) so the
-  admin view is demoable without manual setup.
+  admin endpoints are demoable without manual setup.
 - Global authentication by default: `JwtAuthGuard` now runs on every route
   unless explicitly opted out with `@Public()`.
 - Ownership checks (`assertSelfOrAdmin`) on `consents`, `credit-profile`,

@@ -1,8 +1,5 @@
-import { join } from 'path';
 import { LogLevel, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { NestExpressApplication } from '@nestjs/platform-express';
-import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
@@ -14,35 +11,15 @@ async function bootstrap() {
     ? ['log', 'warn', 'error']
     : ['verbose', 'debug', 'log', 'warn', 'error'];
 
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+  const app = await NestFactory.create(AppModule, {
     logger: logLevels,
   });
 
-  app.useStaticAssets(join(__dirname, '..', '..', 'public'));
+  // Security headers
+  app.use(helmet());
 
-  // Security headers (CSP, HSTS, X-Frame-Options, etc). The CSP allows
-  // 'unsafe-inline' for scripts and styles because the served portal uses
-  // inline <script> blocks and onclick handlers. In the nginx-deployed
-  // layout this CSP is not applied (nginx serves the portal directly).
-  app.use(
-    helmet({
-      contentSecurityPolicy: {
-        directives: {
-          defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'"],
-          styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-          fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-          imgSrc: ["'self'", 'data:'],
-          connectSrc: ["'self'"],
-        },
-      },
-    }),
-  );
-
-  // CORS_ORIGIN was documented in .env.example but never read anywhere.
-  // Supports a comma-separated list of allowed origins; falls back to
-  // disallowing cross-origin requests if unset, rather than silently
-  // allowing everything.
+  // CORS_ORIGIN supports a comma-separated list of allowed origins; falls
+  // back to disallowing cross-origin requests if unset.
   const corsOrigin = process.env.CORS_ORIGIN;
   app.enableCors({
     origin: corsOrigin ? corsOrigin.split(',').map((o) => o.trim()) : false,
@@ -77,33 +54,6 @@ async function bootstrap() {
       transform: true,
     }),
   );
-
-  // Print which Redis configuration the app will use at runtime. This helps
-  // verify that Railway's REDIS_URL is being picked up instead of localhost.
-  try {
-    const configService = app.get(ConfigService);
-    const redisUrl = configService.get<string>('redis.url');
-    if (redisUrl) {
-      try {
-        const parsed = new URL(redisUrl);
-        const host = parsed.hostname;
-        const port = parsed.port || '6379';
-        const hasAuth = parsed.password ? 'yes' : 'no';
-        console.log(`Redis config: url host=${host} port=${port} auth=${hasAuth}`);
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      } catch (_) {
-        console.log('Redis config: REDIS_URL present but invalid');
-      }
-    } else {
-      const host = configService.get<string>('redis.host');
-      const port = configService.get<number>('redis.port');
-      console.log(`Redis config: host=${host} port=${port}`);
-    }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  } catch (_) {
-    // If ConfigService isn't available for some reason, fall back to env.
-    console.log('Redis config: ', process.env.REDIS_URL ?? `${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`);
-  }
 
   await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
 }

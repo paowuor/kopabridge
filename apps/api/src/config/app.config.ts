@@ -74,7 +74,7 @@ export default () => {
     },
 
     redis: {
-      // Prefer a full Redis URL when provided (e.g. from Railway). Fall back
+      // Prefer a full Redis URL when provided. Fall back
       // to separate host/port env vars for local/dev/docker setups.
       url: process.env.REDIS_URL?.trim() || null,
       host: process.env.REDIS_HOST?.trim() || 'localhost',
