@@ -1,18 +1,26 @@
 const assertEnv = (name: string, value?: string) => {
   const trimmed = value?.trim();
   if (!trimmed) {
-    throw new Error(`❌ CONFIGURATION ERROR: ${name} environment variable is missing or empty.`);
+    throw new Error(
+      `❌ CONFIGURATION ERROR: ${name} environment variable is missing or empty.`,
+    );
   }
 
   return trimmed;
 };
 
-const ensurePort = (name: string, rawValue: string | undefined, fallback: string) => {
+const ensurePort = (
+  name: string,
+  rawValue: string | undefined,
+  fallback: string,
+) => {
   const value = rawValue?.trim() || fallback;
   const port = parseInt(value, 10);
 
   if (Number.isNaN(port) || port < 1 || port > 65535) {
-    throw new Error(`❌ CONFIGURATION ERROR: ${name} must be a valid port number between 1 and 65535. Received: ${value}`);
+    throw new Error(
+      `❌ CONFIGURATION ERROR: ${name} must be a valid port number between 1 and 65535. Received: ${value}`,
+    );
   }
 
   return port;
@@ -40,7 +48,10 @@ const parseCorsOrigins = (raw: string | undefined) => {
 };
 
 export default () => {
-  const encryptionKey = assertEnv('TOKEN_ENCRYPTION_KEY', process.env.TOKEN_ENCRYPTION_KEY);
+  const encryptionKey = assertEnv(
+    'TOKEN_ENCRYPTION_KEY',
+    process.env.TOKEN_ENCRYPTION_KEY,
+  );
 
   const hexRegex = /^[0-9a-fA-F]{64}$/;
   if (!hexRegex.test(encryptionKey)) {

@@ -265,13 +265,13 @@ npm run test:e2e
 # Code Style & Quality
 
 ### Linters & Formatters
-This project strictly enforces formatting and linting rules using **Prettier** and **ESLint**:
+This project strictly enforces formatting and linting rules using **Prettier** and **ESLint**.
+
+### Pre-Commit Workflow
+Before committing, always run the format and lint scripts inside `apps/api`:
 
 ```bash
-# Format TypeScript files
 npm run format
-
-# Run ESLint with auto-fix
 npm run lint
 ```
 
