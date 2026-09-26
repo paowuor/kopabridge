@@ -14,6 +14,7 @@ describe('AuthService', () => {
     user: {
       create: jest.fn(),
       findUnique: jest.fn(),
+      update: jest.fn(),
     },
     refreshToken: {
       create: jest.fn(),
@@ -126,6 +127,205 @@ describe('AuthService', () => {
         password: 'password123',
       }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('should register a new user using 12 bcrypt salt rounds', async () => {
+    mockPrismaService.user.create.mockImplementationOnce(
+      ({ data }: { data: { email: string; password: string } }) =>
+        Promise.resolve({
+          id: 'new-user-id',
+          email: data.email,
+          password: data.password,
+        }),
+    );
+
+    const result = await service.register({
+      email: 'new@kopabridge.com',
+      password: 'password123',
+    });
+
+    expect(result.email).toBe('new@kopabridge.com');
+    expect(mockPrismaService.user.create).toHaveBeenCalled();
+    const [createArg] = mockPrismaService.user.create.mock.calls[0] as [
+      { data: { email: string; password: string } },
+    ];
+    // Bcrypt cost 12 hash prefix
+    expect(createArg.data.password.startsWith('$2b$12$')).toBe(true);
+    const matches = await bcrypt.compare(
+      'password123',
+      createArg.data.password,
+    );
+    expect(matches).toBe(true);
+  });
+
+  it('should safely reject non-existent user with UnauthorizedException', async () => {
+    mockPrismaService.user.findUnique.mockResolvedValueOnce(null);
+
+    await expect(
+      service.login({
+        email: 'unknown@kopabridge.com',
+        password: 'password123',
+      }),
+    ).rejects.toThrow(UnauthorizedException);
+  });
+
+  it('should increment failedLoginAttempts on invalid password', async () => {
+    const hashedPassword = await bcrypt.hash('correctpassword', 10);
+    mockPrismaService.user.findUnique.mockResolvedValueOnce({
+      id: 'user-id',
+      email: 'test@kopabridge.com',
+      password: hashedPassword,
+      role: 'user',
+      isActive: true,
+      deletedAt: null,
+      failedLoginAttempts: 2,
+      lockedUntil: null,
+    });
+    mockPrismaService.user.update.mockResolvedValueOnce({});
+
+    await expect(
+      service.login({
+        email: 'test@kopabridge.com',
+        password: 'wrongpassword',
+      }),
+    ).rejects.toThrow(UnauthorizedException);
+
+    expect(mockPrismaService.user.update).toHaveBeenCalled();
+    const [updateArg] = mockPrismaService.user.update.mock.calls[0] as [
+      {
+        where: { id: string };
+        data: { failedLoginAttempts: number; lockedUntil: Date | null };
+      },
+    ];
+    expect(updateArg.where.id).toBe('user-id');
+    expect(updateArg.data.failedLoginAttempts).toBe(3);
+    expect(updateArg.data.lockedUntil).toBeNull();
+  });
+
+  it('should lock user account when failedLoginAttempts reaches 5', async () => {
+    const hashedPassword = await bcrypt.hash('correctpassword', 10);
+    mockPrismaService.user.findUnique.mockResolvedValueOnce({
+      id: 'user-id',
+      email: 'test@kopabridge.com',
+      password: hashedPassword,
+      role: 'user',
+      isActive: true,
+      deletedAt: null,
+      failedLoginAttempts: 4,
+      lockedUntil: null,
+    });
+    mockPrismaService.user.update.mockResolvedValueOnce({});
+
+    await expect(
+      service.login({
+        email: 'test@kopabridge.com',
+        password: 'wrongpassword',
+      }),
+    ).rejects.toThrow(
+      'Account is temporarily locked due to consecutive failed login attempts. Please try again later.',
+    );
+
+    expect(mockPrismaService.user.update).toHaveBeenCalled();
+    const [updateArg] = mockPrismaService.user.update.mock.calls[0] as [
+      {
+        where: { id: string };
+        data: { failedLoginAttempts: number; lockedUntil: Date | null };
+      },
+    ];
+    expect(updateArg.where.id).toBe('user-id');
+    expect(updateArg.data.failedLoginAttempts).toBe(5);
+    expect(updateArg.data.lockedUntil).toBeInstanceOf(Date);
+  });
+
+  it('should reject login if user account is currently locked', async () => {
+    const hashedPassword = await bcrypt.hash('correctpassword', 10);
+    mockPrismaService.user.findUnique.mockResolvedValueOnce({
+      id: 'user-id',
+      email: 'locked@kopabridge.com',
+      password: hashedPassword,
+      role: 'user',
+      isActive: true,
+      deletedAt: null,
+      failedLoginAttempts: 5,
+      lockedUntil: new Date(Date.now() + 600000), // 10 minutes in the future
+    });
+
+    await expect(
+      service.login({
+        email: 'locked@kopabridge.com',
+        password: 'correctpassword',
+      }),
+    ).rejects.toThrow(
+      'Account is temporarily locked due to consecutive failed login attempts. Please try again later.',
+    );
+
+    // Database update should not be called when account is already locked
+    expect(mockPrismaService.user.update).not.toHaveBeenCalled();
+  });
+
+  it('should allow login if lockout period has expired and reset lockout', async () => {
+    const hashedPassword = await bcrypt.hash('password123', 10);
+    mockPrismaService.user.findUnique.mockResolvedValueOnce({
+      id: 'user-id',
+      email: 'unlocked@kopabridge.com',
+      password: hashedPassword,
+      role: 'user',
+      isActive: true,
+      deletedAt: null,
+      failedLoginAttempts: 5,
+      lockedUntil: new Date(Date.now() - 10000), // expired 10s ago
+    });
+    mockPrismaService.user.update.mockResolvedValueOnce({});
+    mockPrismaService.refreshToken.create.mockResolvedValueOnce({});
+
+    const result = await service.login({
+      email: 'unlocked@kopabridge.com',
+      password: 'password123',
+    });
+
+    expect(result.access_token).toBeDefined();
+    expect(mockPrismaService.user.update).toHaveBeenCalled();
+    const [updateArg] = mockPrismaService.user.update.mock.calls[0] as [
+      {
+        where: { id: string };
+        data: { failedLoginAttempts: number; lockedUntil: Date | null };
+      },
+    ];
+    expect(updateArg.data.failedLoginAttempts).toBe(0);
+    expect(updateArg.data.lockedUntil).toBeNull();
+  });
+
+  it('should reset failedLoginAttempts on successful login if user had prior failed attempts', async () => {
+    const hashedPassword = await bcrypt.hash('password123', 10);
+    mockPrismaService.user.findUnique.mockResolvedValueOnce({
+      id: 'user-id',
+      email: 'demo@kopabridge.com',
+      password: hashedPassword,
+      role: 'user',
+      isActive: true,
+      deletedAt: null,
+      failedLoginAttempts: 3,
+      lockedUntil: null,
+    });
+    mockPrismaService.user.update.mockResolvedValueOnce({});
+    mockPrismaService.refreshToken.create.mockResolvedValueOnce({});
+
+    const result = await service.login({
+      email: 'demo@kopabridge.com',
+      password: 'password123',
+    });
+
+    expect(result.access_token).toEqual('mock-access-token');
+    expect(mockPrismaService.user.update).toHaveBeenCalled();
+    const [updateArg] = mockPrismaService.user.update.mock.calls[0] as [
+      {
+        where: { id: string };
+        data: { failedLoginAttempts: number; lockedUntil: Date | null };
+      },
+    ];
+    expect(updateArg.where.id).toBe('user-id');
+    expect(updateArg.data.failedLoginAttempts).toBe(0);
+    expect(updateArg.data.lockedUntil).toBeNull();
   });
 
   it('should rotate and refresh token when valid refresh token is presented', async () => {

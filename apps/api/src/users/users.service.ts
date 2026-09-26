@@ -5,6 +5,8 @@ import { CreateUserDto } from './dto/create-user.dto';
 
 @Injectable()
 export class UsersService {
+  private readonly BCRYPT_SALT_ROUNDS = 12;
+
   constructor(private prisma: PrismaService) {}
 
   async createUser(dto: CreateUserDto) {
@@ -18,7 +20,10 @@ export class UsersService {
 
     // Previously stored dto.password verbatim — this was writing
     // plaintext passwords to the database. Always hash before persisting.
-    const hashedPassword = await bcrypt.hash(dto.password, 10);
+    const hashedPassword = await bcrypt.hash(
+      dto.password,
+      this.BCRYPT_SALT_ROUNDS,
+    );
 
     const user = await this.prisma.user.create({
       data: {

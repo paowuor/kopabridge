@@ -21,7 +21,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
-  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('register')
   @ApiOperation({ summary: 'Register a new user account' })
   @ApiResponse({
@@ -32,12 +32,16 @@ export class AuthController {
     status: 400,
     description: 'Bad Request. Validation failed or email already in use.',
   })
+  @ApiResponse({
+    status: 429,
+    description: 'Too Many Requests. Registration rate limit exceeded.',
+  })
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
 
   @Public()
-  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login user and return access & refresh tokens' })
@@ -49,7 +53,11 @@ export class AuthController {
   @ApiResponse({
     status: 401,
     description:
-      'Unauthorized. Invalid email or password, or account disabled.',
+      'Unauthorized. Invalid email or password, account locked, or account disabled.',
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Too Many Requests. Login rate limit exceeded.',
   })
   login(@Body() dto: LoginDto, @Req() req: Request) {
     const userAgent = req.headers['user-agent'];
@@ -71,6 +79,10 @@ export class AuthController {
   @ApiResponse({
     status: 401,
     description: 'Unauthorized. Invalid, expired, or reused refresh token.',
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Too Many Requests. Refresh rate limit exceeded.',
   })
   refresh(@Body() dto: RefreshTokenDto, @Req() req: Request) {
     const userAgent = req.headers['user-agent'];

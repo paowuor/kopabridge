@@ -22,6 +22,12 @@ export interface AuthTokens {
 export class AuthService {
   private readonly REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
   private readonly ACCESS_TOKEN_TTL_SECONDS = 15 * 60; // 15 minutes
+  private readonly BCRYPT_SALT_ROUNDS = 12;
+  private readonly MAX_FAILED_LOGIN_ATTEMPTS = 5;
+  private readonly LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+  // Pre-hashed bcrypt cost-12 dummy hash to defend against timing-based email enumeration
+  private readonly DUMMY_PASSWORD_HASH =
+    '$2b$12$Bz868uf/GcwO9.KY3lXkx.mfe2peHXuBRjqRqPbS2.gtkZ4BlEra2';
 
   constructor(
     private prisma: PrismaService,
@@ -29,7 +35,10 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
-    const hashedPassword = await bcrypt.hash(dto.password, 10);
+    const hashedPassword = await bcrypt.hash(
+      dto.password,
+      this.BCRYPT_SALT_ROUNDS,
+    );
 
     const user = await this.prisma.user.create({
       data: {
@@ -46,14 +55,69 @@ export class AuthService {
       where: { email: dto.email },
     });
 
+    // Timing attack mitigation: if user does not exist, is soft-deleted, or disabled,
+    // execute constant-time bcrypt comparison against dummy hash before rejecting.
     if (!user || user.deletedAt || user.isActive === false) {
+      await bcrypt.compare(dto.password, this.DUMMY_PASSWORD_HASH);
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // Account Lockout check (brute-force defense)
+    const now = new Date();
+    if (user.lockedUntil && new Date(user.lockedUntil) > now) {
+      // Execute constant-time bcrypt compare to avoid revealing lock status via timing
+      await bcrypt.compare(dto.password, this.DUMMY_PASSWORD_HASH);
+      throw new UnauthorizedException(
+        'Account is temporarily locked due to consecutive failed login attempts. Please try again later.',
+      );
     }
 
     const isPasswordValid = await bcrypt.compare(dto.password, user.password);
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      // If lockout previously expired, start a fresh attempt counter
+      const isLockoutExpired =
+        user.lockedUntil && new Date(user.lockedUntil) <= now;
+      const currentFailedAttempts = isLockoutExpired
+        ? 0
+        : user.failedLoginAttempts || 0;
+      const newAttempts = currentFailedAttempts + 1;
+
+      if (newAttempts >= this.MAX_FAILED_LOGIN_ATTEMPTS) {
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: {
+            failedLoginAttempts: newAttempts,
+            lockedUntil: new Date(Date.now() + this.LOCKOUT_DURATION_MS),
+          },
+        });
+        throw new UnauthorizedException(
+          'Account is temporarily locked due to consecutive failed login attempts. Please try again later.',
+        );
+      } else {
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: {
+            failedLoginAttempts: newAttempts,
+            lockedUntil: null,
+          },
+        });
+        throw new UnauthorizedException('Invalid credentials');
+      }
+    }
+
+    // Login successful: reset failed attempts and lockout if previously flagged
+    if (
+      (user.failedLoginAttempts && user.failedLoginAttempts > 0) ||
+      user.lockedUntil
+    ) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          failedLoginAttempts: 0,
+          lockedUntil: null,
+        },
+      });
     }
 
     const accessToken = this.jwtService.sign({
