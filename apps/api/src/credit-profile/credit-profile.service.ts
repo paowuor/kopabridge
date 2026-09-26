@@ -32,9 +32,16 @@ export class CreditProfileService {
 
     const payments = energyAccounts.flatMap((account) => account.payments);
 
-    const paid = payments.filter((p) => p.status === 'paid').length;
-    const late = payments.filter((p) => p.status === 'late').length;
-    const missed = payments.filter((p) => p.status === 'missed').length;
+    let paid = 0;
+    let late = 0;
+    let missed = 0;
+
+    for (const p of payments) {
+      const s = p.status.toLowerCase();
+      if (s === 'paid') paid++;
+      else if (s === 'late') late++;
+      else if (s === 'missed') missed++;
+    }
 
     let creditScore: {
       energyAccountId: string;

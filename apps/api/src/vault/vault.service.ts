@@ -23,7 +23,8 @@ export class VaultService {
   }
 
   /**
-   * Encrypts plaintext into a unified string formatted as: iv.authTag.cipherText
+   * Encrypts plaintext into a unified string formatted as: v1.iv.authTag.cipherText
+   * The 'v1' prefix enables key versioning and future key rotation.
    */
   encrypt(plainText: string): string {
     // 1. Generate a cryptographically secure, random Initialization Vector (IV)
@@ -43,20 +44,32 @@ export class VaultService {
     // 4. Extract the authentication tag protecting the message integrity
     const authTag = cipher.getAuthTag();
 
-    // 5. Join IV, Auth Tag, and Ciphertext with a delimiter for single-column database storage
-    return `${iv.toString('hex')}.${authTag.toString('hex')}.${encrypted}`;
+    // 5. Join KeyVersion, IV, Auth Tag, and Ciphertext with delimiter for single-column database storage
+    return `v1.${iv.toString('hex')}.${authTag.toString('hex')}.${encrypted}`;
   }
 
   /**
-   * Decrypts a formatted token string back into raw plaintext
+   * Decrypts a formatted token string back into raw plaintext.
+   * Supports both versioned ('v1.iv.authTag.cipherText') and legacy ('iv.authTag.cipherText') formats.
    */
   decrypt(cipherText: string): string {
     try {
       // 1. Unpack the components from our stored string contract
-      const [ivHex, tagHex, encryptedHex] = cipherText.split('.');
+      const parts = cipherText.split('.');
+      let ivHex: string;
+      let tagHex: string;
+      let encryptedHex: string;
+
+      if (parts.length === 4 && parts[0] === 'v1') {
+        [, ivHex, tagHex, encryptedHex] = parts;
+      } else if (parts.length === 3) {
+        [ivHex, tagHex, encryptedHex] = parts;
+      } else {
+        throw new Error('Invalid encrypted text format.');
+      }
 
       if (!ivHex || !tagHex || !encryptedHex) {
-        throw new Error('Invalid encrypted text format format.');
+        throw new Error('Invalid encrypted text format.');
       }
 
       const iv = Buffer.from(ivHex, 'hex');

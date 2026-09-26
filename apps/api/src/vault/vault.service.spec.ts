@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { VaultService } from './vault.service';
 import { ConfigService } from '@nestjs/config';
 import { InternalServerErrorException } from '@nestjs/common';
+import * as crypto from 'crypto';
 
 describe('VaultService', () => {
   let service: VaultService;
@@ -39,9 +40,23 @@ describe('VaultService', () => {
 
     const cipherText = service.encrypt(originalToken);
     expect(cipherText).not.toEqual(originalToken);
+    expect(cipherText.startsWith('v1.')).toBe(true);
 
     const decryptedToken = service.decrypt(cipherText);
     expect(decryptedToken).toEqual(originalToken);
+  });
+
+  // 1b. Legacy unversioned tokens can still be decrypted
+  it('should decrypt legacy 3-part unversioned ciphertext format', () => {
+    const iv = crypto.randomBytes(12);
+    const key = Buffer.from(MOCK_KEY, 'hex');
+    const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+    let encrypted = cipher.update('legacy-secret-token', 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    const tag = cipher.getAuthTag();
+    const legacyCipher = `${iv.toString('hex')}.${tag.toString('hex')}.${encrypted}`;
+
+    expect(service.decrypt(legacyCipher)).toEqual('legacy-secret-token');
   });
 
   // 2. Encrypting the same token twice produces different ciphertexts (because of random IVs)

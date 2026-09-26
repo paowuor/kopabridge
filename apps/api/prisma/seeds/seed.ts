@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Role, PaymentStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -15,7 +15,7 @@ async function main() {
     create: {
       email: 'demo@kopabridge.com',
       password: hashedPassword,
-      role: 'user',
+      role: Role.USER,
     },
   });
 
@@ -28,7 +28,7 @@ async function main() {
     create: {
       email: 'admin@kopabridge.com',
       password: adminPassword,
-      role: 'admin',
+      role: Role.ADMIN,
     },
   });
 
@@ -68,21 +68,21 @@ async function main() {
       data: [
         {
           amount: 500,
-          status: 'paid',
+          status: PaymentStatus.PAID,
           dueDate: new Date('2026-06-01'),
           paidAt: new Date('2026-05-31'),
           energyAccountId: energyAccount.id,
         },
         {
           amount: 500,
-          status: 'late',
+          status: PaymentStatus.LATE,
           dueDate: new Date('2026-06-08'),
           paidAt: new Date('2026-06-10'),
           energyAccountId: energyAccount.id,
         },
         {
           amount: 500,
-          status: 'missed',
+          status: PaymentStatus.MISSED,
           dueDate: new Date('2026-06-15'),
           energyAccountId: energyAccount.id,
         },

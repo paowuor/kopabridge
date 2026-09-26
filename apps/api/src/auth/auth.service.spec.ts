@@ -76,4 +76,42 @@ describe('AuthService', () => {
       }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
+
+  it('should throw UnauthorizedException if user is deactivated or soft-deleted', async () => {
+    const hashedPassword = await bcrypt.hash('password123', 10);
+
+    // Deactivated user
+    mockPrismaService.user.findUnique.mockResolvedValueOnce({
+      id: 'user-id',
+      email: 'deactivated@kopabridge.com',
+      password: hashedPassword,
+      role: 'user',
+      isActive: false,
+      deletedAt: null,
+    });
+
+    await expect(
+      service.login({
+        email: 'deactivated@kopabridge.com',
+        password: 'password123',
+      }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+
+    // Soft-deleted user
+    mockPrismaService.user.findUnique.mockResolvedValueOnce({
+      id: 'user-id-2',
+      email: 'deleted@kopabridge.com',
+      password: hashedPassword,
+      role: 'user',
+      isActive: true,
+      deletedAt: new Date(),
+    });
+
+    await expect(
+      service.login({
+        email: 'deleted@kopabridge.com',
+        password: 'password123',
+      }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
 });

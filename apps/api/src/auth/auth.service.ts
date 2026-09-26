@@ -30,7 +30,7 @@ export class AuthService {
       where: { email: dto.email },
     });
 
-    if (!user) {
+    if (!user || user.deletedAt || user.isActive === false) {
       throw new UnauthorizedException('Invalid credentials');
     }
 

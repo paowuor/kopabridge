@@ -6,15 +6,36 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Role {
+  USER     @map("user")
+  ADMIN    @map("admin")
+  PROVIDER @map("provider")
+}
+
+enum PaymentStatus {
+  PAID    @map("paid")
+  LATE    @map("late")
+  MISSED  @map("missed")
+  DEFAULT @map("default")
+  PENDING @map("pending")
+}
+
 model User {
   id              String            @id @default(uuid())
   email           String            @unique
   password        String
-  role            String            @default("user")
+  role            Role              @default(USER)
+  isActive        Boolean           @default(true)
+  deletedAt       DateTime?
+
   energyAccounts  EnergyAccount[]
   providerConsent ProviderConsent[]
+
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
+
+  @@index([deletedAt])
+  @@index([isActive])
 }
 
 model Provider {
@@ -23,68 +44,75 @@ model Provider {
   slug            String            @unique
   apiBaseUrl      String?
   isActive        Boolean           @default(true)
+
   energyAccounts  EnergyAccount[]
   providerConsent ProviderConsent[]
+
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 }
 
 model EnergyAccount {
-  id             String           @id @default(uuid())
-  accountNumber  String           @unique
-  deviceId       String           @unique
-  customerName   String
-  isActive       Boolean          @default(true)
+  id            String           @id @default(uuid())
+  accountNumber String           @unique
+  deviceId      String           @unique
+  customerName  String
+  isActive      Boolean          @default(true)
+  deactivatedAt DateTime?
 
-  userId         String
-  providerId     String
+  userId        String
+  providerId    String
 
-  user           User             @relation(fields: [userId], references: [id])
-  provider       Provider         @relation(fields: [providerId], references: [id])
+  user          User             @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  provider      Provider         @relation(fields: [providerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
-  payments       PaymentHistory[] 
+  payments      PaymentHistory[]
 
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
 
-  @@index([userId])
+  @@index([userId, isActive])
   @@index([providerId])
 }
 
 model PaymentHistory {
   id               String        @id @default(uuid())
-  amount           Float
-  currency         String        @default("KES")
-  status           String
+  amount           Decimal       @db.Decimal(12, 2)
+  currency         String        @default("KES") @db.VarChar(3)
+  status           PaymentStatus
   paidAt           DateTime?
   dueDate          DateTime
   paymentReference String?       @unique
 
   energyAccountId  String
-  energyAccount    EnergyAccount @relation(fields: [energyAccountId], references: [id])
+  energyAccount    EnergyAccount @relation(fields: [energyAccountId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
-  @@index([energyAccountId])
+  @@index([energyAccountId, status])
+  @@index([energyAccountId, dueDate(sort: Desc)])
 }
 
 model ProviderConsent {
-  id           String   @id @default(uuid())
+  id           String    @id @default(uuid())
 
   userId       String
   providerId   String
 
-  accessToken  String
-  refreshToken String?
-  expiresAt    DateTime 
-  revoked      Boolean
+  accessToken  String    @db.Text
+  refreshToken String?   @db.Text
+  expiresAt    DateTime
+  revoked      Boolean   @default(false)
+  revokedAt    DateTime?
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  user         User     @relation(fields: [userId], references: [id])
-  provider     Provider @relation(fields: [providerId], references: [id])
+  user         User      @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  provider     Provider  @relation(fields: [providerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
-  @@index([userId, revoked])
+  @@index([userId, providerId, revoked])
+  @@index([userId, revoked, expiresAt])
   @@index([providerId])
 }

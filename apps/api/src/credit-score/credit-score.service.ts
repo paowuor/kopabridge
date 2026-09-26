@@ -27,20 +27,20 @@ export class CreditScoreService {
       where: {
         energyAccountId,
       },
+      select: {
+        status: true,
+      },
     });
 
     let score = 100;
 
     for (const payment of payments) {
-      if (payment.status === 'late') {
+      const status = payment.status.toLowerCase();
+      if (status === 'late') {
         score -= 10;
-      }
-
-      if (payment.status === 'missed') {
+      } else if (status === 'missed') {
         score -= 25;
-      }
-
-      if (payment.status === 'default') {
+      } else if (status === 'default') {
         score -= 40;
       }
     }

@@ -31,12 +31,24 @@ export class UsersService {
   }
 
   async getUsers() {
-    const users = await this.prisma.user.findMany();
+    const users = await this.prisma.user.findMany({
+      where: { deletedAt: null },
+    });
     // Never return password hashes, even to admin-only endpoints.
     return users.map((user) => {
       const { password, ...rest } = user;
       void password;
       return rest;
+    });
+  }
+
+  async softDeleteUser(id: string) {
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        deletedAt: new Date(),
+        isActive: false,
+      },
     });
   }
 }

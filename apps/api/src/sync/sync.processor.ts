@@ -7,6 +7,7 @@ import { ProviderRegistryService } from '../providers/provider-registry.service'
 import { ProviderNormalizationService } from '../providers/provider-normalization.service';
 import { CreditScoreService } from '../credit-score/credit-score.service';
 import { SyncJobData } from './sync.service';
+import { PaymentStatus } from '@prisma/client';
 
 @Processor('provider-sync')
 export class SyncProcessor extends WorkerHost {
@@ -114,16 +115,17 @@ export class SyncProcessor extends WorkerHost {
     // provider's own transaction/reference id here instead.
     for (const [index, payment] of normalized.paymentHistory.entries()) {
       const paymentReference = `${consent.provider.slug}-${normalized.accountNumber}-${index}`;
+      const status = this.mapPaymentStatus(payment.status);
 
       await this.prisma.paymentHistory.upsert({
         where: { paymentReference },
         update: {
           amount: payment.amount,
-          status: payment.status,
+          status,
         },
         create: {
           amount: payment.amount,
-          status: payment.status,
+          status,
           dueDate: new Date(),
           paymentReference,
           energyAccountId: energyAccount.id,
@@ -138,5 +140,21 @@ export class SyncProcessor extends WorkerHost {
     this.logger.log(
       `Recalculated score for energy account ${energyAccount.id}: ${score.score} (${score.rating})`,
     );
+  }
+
+  private mapPaymentStatus(rawStatus: string): PaymentStatus {
+    const normalized = (rawStatus || '').toLowerCase();
+    switch (normalized) {
+      case 'paid':
+        return PaymentStatus.PAID;
+      case 'late':
+        return PaymentStatus.LATE;
+      case 'missed':
+        return PaymentStatus.MISSED;
+      case 'default':
+        return PaymentStatus.DEFAULT;
+      default:
+        return PaymentStatus.PENDING;
+    }
   }
 }

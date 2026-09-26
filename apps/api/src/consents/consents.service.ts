@@ -26,14 +26,23 @@ export class ConsentsService {
     return consent;
   }
 
-  async createConsent(userId: string, providerId: string, accessToken: string) {
+  async createConsent(
+    userId: string,
+    providerId: string,
+    accessToken: string,
+    refreshToken?: string,
+  ) {
     const encryptedToken = this.vaultService.encrypt(accessToken);
+    const encryptedRefreshToken = refreshToken
+      ? this.vaultService.encrypt(refreshToken)
+      : null;
 
     return this.prisma.providerConsent.create({
       data: {
         userId,
         providerId,
-        accessToken: encryptedToken, // 2. Store the encrypted string
+        accessToken: encryptedToken,
+        refreshToken: encryptedRefreshToken,
         expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         revoked: false,
       },
@@ -45,6 +54,7 @@ export class ConsentsService {
       where: { id },
       data: {
         revoked: true,
+        revokedAt: new Date(),
       },
     });
   }
