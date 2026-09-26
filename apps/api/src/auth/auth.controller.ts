@@ -11,6 +11,8 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Public } from './decorators/public.decorator';
 import { Throttle } from '@nestjs/throttler';
@@ -100,5 +102,49 @@ export class AuthController {
   })
   logout(@Body() dto: Partial<RefreshTokenDto>) {
     return this.authService.logout(dto.refreshToken);
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Request password reset instructions for an account',
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'If the email is registered, password reset instructions are dispatched.',
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Too Many Requests. Rate limit exceeded.',
+  })
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto);
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Reset password using a valid one-time recovery token',
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Password successfully reset and all active sessions invalidated.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request. Invalid or expired token, or invalid password.',
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Too Many Requests. Rate limit exceeded.',
+  })
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto);
   }
 }

@@ -3,7 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from './auth.service';
 import * as bcrypt from 'bcrypt';
-import { UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -22,6 +22,18 @@ describe('AuthService', () => {
       update: jest.fn(),
       updateMany: jest.fn(),
     },
+    passwordResetToken: {
+      create: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
+      deleteMany: jest.fn(),
+    },
+    $transaction: jest.fn().mockImplementation((args: unknown) => {
+      if (Array.isArray(args)) {
+        return Promise.all(args);
+      }
+      return Promise.resolve(args);
+    }),
   };
 
   beforeEach(async () => {
@@ -441,5 +453,137 @@ describe('AuthService', () => {
     )[0][0];
     expect(logoutArgs.where.family).toBe('family-to-logout');
     expect(logoutArgs.data.revoked).toBe(true);
+  });
+
+  describe('forgotPassword', () => {
+    it('should create a hashed password reset token if user exists', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValueOnce({
+        id: 'user-reset-id',
+        email: 'reset@kopabridge.com',
+        isActive: true,
+        deletedAt: null,
+      });
+      mockPrismaService.passwordResetToken.deleteMany.mockResolvedValueOnce({});
+      mockPrismaService.passwordResetToken.create.mockResolvedValueOnce({});
+
+      const result = await service.forgotPassword({
+        email: 'reset@kopabridge.com',
+      });
+
+      expect(result.message).toContain(
+        'If an account with that email exists, password reset instructions have been sent.',
+      );
+      expect(
+        mockPrismaService.passwordResetToken.deleteMany,
+      ).toHaveBeenCalled();
+      const [deleteArg] = mockPrismaService.passwordResetToken.deleteMany.mock
+        .calls[0] as [{ where: { userId: string } }];
+      expect(deleteArg.where.userId).toBe('user-reset-id');
+
+      expect(mockPrismaService.passwordResetToken.create).toHaveBeenCalled();
+      const [createArg] = mockPrismaService.passwordResetToken.create.mock
+        .calls[0] as [
+        { data: { tokenHash: string; userId: string; expiresAt: Date } },
+      ];
+      expect(createArg.data.userId).toBe('user-reset-id');
+      expect(createArg.data.tokenHash).toBeDefined();
+      expect(createArg.data.expiresAt.getTime()).toBeGreaterThan(Date.now());
+    });
+
+    it('should return identical message when user is not found to prevent enumeration', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValueOnce(null);
+
+      const result = await service.forgotPassword({
+        email: 'nonexistent@kopabridge.com',
+      });
+
+      expect(result.message).toContain(
+        'If an account with that email exists, password reset instructions have been sent.',
+      );
+      expect(
+        mockPrismaService.passwordResetToken.create,
+      ).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('resetPassword', () => {
+    it('should reset password, clear lockout, and revoke active sessions in a transaction', async () => {
+      mockPrismaService.passwordResetToken.findUnique.mockResolvedValueOnce({
+        id: 'token-id-1',
+        tokenHash: 'hashed-token',
+        userId: 'user-reset-id',
+        usedAt: null,
+        expiresAt: new Date(Date.now() + 600000),
+        user: {
+          id: 'user-reset-id',
+          email: 'reset@kopabridge.com',
+          isActive: true,
+          deletedAt: null,
+        },
+      });
+
+      const result = await service.resetPassword({
+        token: 'raw-token-123',
+        newPassword: 'BrandNewPassword123!',
+      });
+
+      expect(result.message).toContain('Password has been successfully reset');
+      expect(mockPrismaService.$transaction).toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException if token not found or already used', async () => {
+      mockPrismaService.passwordResetToken.findUnique.mockResolvedValueOnce(
+        null,
+      );
+
+      await expect(
+        service.resetPassword({
+          token: 'invalid-token',
+          newPassword: 'BrandNewPassword123!',
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      mockPrismaService.passwordResetToken.findUnique.mockResolvedValueOnce({
+        id: 'token-id-2',
+        tokenHash: 'hashed-token',
+        userId: 'user-reset-id',
+        usedAt: new Date(),
+        expiresAt: new Date(Date.now() + 600000),
+        user: {
+          id: 'user-reset-id',
+          isActive: true,
+          deletedAt: null,
+        },
+      });
+
+      await expect(
+        service.resetPassword({
+          token: 'used-token',
+          newPassword: 'BrandNewPassword123!',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException if token has expired', async () => {
+      mockPrismaService.passwordResetToken.findUnique.mockResolvedValueOnce({
+        id: 'token-id-3',
+        tokenHash: 'hashed-token',
+        userId: 'user-reset-id',
+        usedAt: null,
+        expiresAt: new Date(Date.now() - 10000),
+        user: {
+          id: 'user-reset-id',
+          isActive: true,
+          deletedAt: null,
+        },
+      });
+
+      await expect(
+        service.resetPassword({
+          token: 'expired-token',
+          newPassword: 'BrandNewPassword123!',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
   });
 });

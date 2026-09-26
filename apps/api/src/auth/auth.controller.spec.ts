@@ -10,6 +10,8 @@ describe('AuthController', () => {
     login: jest.fn(),
     refresh: jest.fn(),
     logout: jest.fn(),
+    forgotPassword: jest.fn(),
+    resetPassword: jest.fn(),
   };
 
   const mockRequest = {
@@ -95,5 +97,34 @@ describe('AuthController', () => {
     const result = await controller.logout(dto);
     expect(result.status).toEqual('success');
     expect(mockAuthService.logout).toHaveBeenCalledWith('token-to-logout');
+  });
+
+  it('should call forgotPassword on authService', async () => {
+    const dto = { email: 'reset@kopabridge.com' };
+    mockAuthService.forgotPassword.mockResolvedValueOnce({
+      message:
+        'If an account with that email exists, password reset instructions have been sent.',
+    });
+
+    const result = await controller.forgotPassword(dto);
+    expect(result.message).toContain(
+      'password reset instructions have been sent',
+    );
+    expect(mockAuthService.forgotPassword).toHaveBeenCalledWith(dto);
+  });
+
+  it('should call resetPassword on authService', async () => {
+    const dto = {
+      token: 'raw-token-123',
+      newPassword: 'BrandNewPassword123!',
+    };
+    mockAuthService.resetPassword.mockResolvedValueOnce({
+      message:
+        'Password has been successfully reset. Please log in with your new password.',
+    });
+
+    const result = await controller.resetPassword(dto);
+    expect(result.message).toContain('Password has been successfully reset');
+    expect(mockAuthService.resetPassword).toHaveBeenCalledWith(dto);
   });
 });
