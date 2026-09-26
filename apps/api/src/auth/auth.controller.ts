@@ -1,7 +1,16 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Req,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
+import type { Request } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Public } from './decorators/public.decorator';
 import { Throttle } from '@nestjs/throttler';
@@ -30,16 +39,54 @@ export class AuthController {
   @Public()
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post('login')
-  @ApiOperation({ summary: 'Login user and return JWT token' })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Login user and return access & refresh tokens' })
   @ApiResponse({
     status: 200,
-    description: 'Successfully logged in and authenticated.',
+    description:
+      'Successfully authenticated. Access token and rotating refresh token issued.',
   })
   @ApiResponse({
     status: 401,
-    description: 'Unauthorized. Invalid email or password.',
+    description:
+      'Unauthorized. Invalid email or password, or account disabled.',
   })
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  login(@Body() dto: LoginDto, @Req() req: Request) {
+    const userAgent = req.headers['user-agent'];
+    const ipAddress = req.ip;
+    return this.authService.login(dto, { userAgent, ipAddress });
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Rotate and exchange refresh token for a new access token pair',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Tokens successfully rotated and refreshed.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized. Invalid, expired, or reused refresh token.',
+  })
+  refresh(@Body() dto: RefreshTokenDto, @Req() req: Request) {
+    const userAgent = req.headers['user-agent'];
+    const ipAddress = req.ip;
+    return this.authService.refresh(dto.refreshToken, { userAgent, ipAddress });
+  }
+
+  @Public()
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Revoke refresh token and invalidate session' })
+  @ApiResponse({
+    status: 200,
+    description: 'Session successfully invalidated.',
+  })
+  logout(@Body() dto: Partial<RefreshTokenDto>) {
+    return this.authService.logout(dto.refreshToken);
   }
 }
