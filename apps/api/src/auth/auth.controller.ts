@@ -39,7 +39,11 @@ export class AuthController {
   })
   @ApiResponse({
     status: 400,
-    description: 'Bad Request. Validation failed or email already in use.',
+    description: 'Bad Request. Validation failed.',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'Conflict. Email already in use.',
   })
   @ApiResponse({
     status: 429,

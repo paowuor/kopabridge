@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import {
@@ -8,7 +9,6 @@ import {
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/roles/roles.enum';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { Public } from '../auth/decorators/public.decorator';
 import {
   ApiTags,
   ApiOperation,
@@ -37,9 +37,16 @@ export class UsersController {
     return user;
   }
 
-  @Public()
+  // Admin-only internal user creation. This handler used to be @Public(),
+  // which made it an unthrottled duplicate of POST /auth/register (which is
+  // itself rate limited to 5/min) and let anyone farm accounts anonymously.
+  // Public self-service signup belongs to /auth/register only.
+  @ApiBearerAuth()
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post()
-  @ApiOperation({ summary: 'Create a new user (Public endpoint)' })
+  @ApiOperation({ summary: 'Create a new user (Admin only)' })
   @ApiResponse({
     status: 201,
     description: 'User successfully created.',
@@ -47,6 +54,18 @@ export class UsersController {
   @ApiResponse({
     status: 400,
     description: 'Bad Request. Validation failed.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized. Missing token.',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden. User does not have ADMIN privileges.',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'Conflict. Email already in use.',
   })
   create(@Body() dto: CreateUserDto) {
     return this.usersService.createUser(dto);

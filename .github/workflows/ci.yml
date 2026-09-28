@@ -49,7 +49,10 @@ jobs:
 
       - name: Run ESLint Analyzer
         run: npm run lint
-      
+
+      - name: Run Unit Tests
+        run: npm test -- --ci --coverage=false
+
       - name: Validate Production Docker Build
         uses: docker/build-push-action@v5
         with:

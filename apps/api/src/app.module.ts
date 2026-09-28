@@ -21,6 +21,7 @@ import { ConsentsModule } from './consents/consents.module';
 import { VaultModule } from './vault/vault.module';
 import { SyncModule } from './sync/sync.module';
 import { MetricsModule } from './metrics/metrics.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -65,6 +66,7 @@ import { MetricsModule } from './metrics/metrics.module';
     VaultModule,
     SyncModule,
     MetricsModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [

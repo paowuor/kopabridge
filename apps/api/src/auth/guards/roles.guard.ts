@@ -7,16 +7,19 @@ import {
 import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
 import { AuthenticatedUser } from '../decorators/current-user.decorator';
+import { ROLES_KEY } from '../decorators/roles.decorator';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const requiredRoles = this.reflector.getAllAndOverride<string[]>('roles', [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    // Must read the same constant @Roles() writes, or renaming it would
+    // silently make every route pass.
+    const requiredRoles = this.reflector.getAllAndOverride<string[]>(
+      ROLES_KEY,
+      [context.getHandler(), context.getClass()],
+    );
 
     if (!requiredRoles) {
       return true;
@@ -37,6 +40,13 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('Access denied: User session data missing.');
     }
 
-    return requiredRoles.includes(role);
+    // Deny explicitly rather than returning false so every denial path
+    // produces the same response body, and so the reason for the required
+    // role is never disclosed to the caller.
+    if (!requiredRoles.includes(role)) {
+      throw new ForbiddenException('Access denied: insufficient role.');
+    }
+
+    return true;
   }
 }

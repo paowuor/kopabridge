@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -11,6 +12,18 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { JwtService } from '@nestjs/jwt';
+
+/** Prisma's error code for a unique-constraint violation. */
+const PRISMA_UNIQUE_VIOLATION = 'P2002';
+
+function isUniqueConstraintViolation(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: unknown }).code === PRISMA_UNIQUE_VIOLATION
+  );
+}
 
 export interface TokenMetadata {
   userAgent?: string;
@@ -42,19 +55,42 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
+    // Reject an already-registered email up front rather than letting the
+    // unique constraint raise Prisma P2002, which the global exception filter
+    // maps to a 500. UsersService.createUser does the same, and both now
+    // return a consistent 409 instead of leaking a server error.
+    const existing = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+      select: { id: true },
+    });
+
+    if (existing) {
+      throw new ConflictException('Email already in use');
+    }
+
     const hashedPassword = await bcrypt.hash(
       dto.password,
       this.BCRYPT_SALT_ROUNDS,
     );
 
-    const user = await this.prisma.user.create({
-      data: {
-        email: dto.email,
-        password: hashedPassword,
-      },
-    });
+    try {
+      const user = await this.prisma.user.create({
+        data: {
+          email: dto.email,
+          password: hashedPassword,
+        },
+      });
 
-    return { id: user.id, email: user.email };
+      return { id: user.id, email: user.email };
+    } catch (error) {
+      // Two concurrent registrations can both pass the pre-check above; the
+      // unique constraint is the real arbiter, so translate its violation too.
+      if (isUniqueConstraintViolation(error)) {
+        throw new ConflictException('Email already in use');
+      }
+
+      throw error;
+    }
   }
 
   async login(dto: LoginDto, metadata?: TokenMetadata): Promise<AuthTokens> {

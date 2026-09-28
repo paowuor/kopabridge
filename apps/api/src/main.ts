@@ -1,9 +1,12 @@
 import { LogLevel, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import appConfig from './config/app.config';
 
 async function bootstrap() {
   const isProd = process.env.NODE_ENV === 'production';
@@ -11,12 +14,23 @@ async function bootstrap() {
     ? ['log', 'warn', 'error']
     : ['verbose', 'debug', 'log', 'warn', 'error'];
 
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: logLevels,
   });
 
   // Security headers
   app.use(helmet());
+
+  // The API runs behind nginx in every deployed environment, so req.ip and
+  // the throttler (which keys off req.ip) would otherwise see only the
+  // proxy's address — collapsing every per-IP rate limit into one shared
+  // global bucket. Configured via TRUST_PROXY (see config/app.config.ts).
+  // The NestExpressApplication generic is what surfaces Express's `set`,
+  // which plain INestApplication does not expose.
+  app.set('trust proxy', appConfig().app.trustProxy);
+
+  // Cookie parsing for secure refresh token handling
+  app.use(cookieParser());
 
   // CORS_ORIGIN supports a comma-separated list of allowed origins; falls
   // back to disallowing cross-origin requests if unset.

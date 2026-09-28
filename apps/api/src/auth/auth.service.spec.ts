@@ -3,7 +3,11 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from './auth.service';
 import * as bcrypt from 'bcrypt';
-import { BadRequestException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  UnauthorizedException,
+} from '@nestjs/common';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -168,6 +172,72 @@ describe('AuthService', () => {
       createArg.data.password,
     );
     expect(matches).toBe(true);
+  });
+
+  it('should reject registration with an email that is already in use', async () => {
+    mockPrismaService.user.findUnique.mockResolvedValueOnce({
+      id: 'existing-user-id',
+    });
+
+    await expect(
+      service.register({
+        email: 'taken@kopabridge.com',
+        password: 'password123',
+      }),
+    ).rejects.toThrow(ConflictException);
+
+    expect(mockPrismaService.user.create).not.toHaveBeenCalled();
+  });
+
+  it('should translate a concurrent unique-constraint race into a 409', async () => {
+    // Two simultaneous registrations both pass the pre-check; the unique
+    // constraint is the real arbiter and must not surface as a 500.
+    mockPrismaService.user.findUnique.mockResolvedValueOnce(null);
+    mockPrismaService.user.create.mockRejectedValueOnce({
+      code: 'P2002',
+      meta: { target: ['email'] },
+    });
+
+    await expect(
+      service.register({
+        email: 'racer@kopabridge.com',
+        password: 'password123',
+      }),
+    ).rejects.toThrow(ConflictException);
+  });
+
+  it('should not mask unrelated database errors during registration', async () => {
+    const dbError = new Error('connection terminated');
+    mockPrismaService.user.findUnique.mockResolvedValueOnce(null);
+    mockPrismaService.user.create.mockRejectedValueOnce(dbError);
+
+    await expect(
+      service.register({
+        email: 'boom@kopabridge.com',
+        password: 'password123',
+      }),
+    ).rejects.toThrow('connection terminated');
+  });
+
+  it('should never let a caller set their own role at registration', async () => {
+    mockPrismaService.user.findUnique.mockResolvedValueOnce(null);
+    mockPrismaService.user.create.mockResolvedValueOnce({
+      id: 'new-user-id',
+      email: 'escalate@kopabridge.com',
+    });
+
+    await service.register({
+      email: 'escalate@kopabridge.com',
+      password: 'password123',
+      // A malicious client may send extra fields; ValidationPipe normally
+      // strips them, and the service must not forward them to Prisma.
+      role: 'admin',
+    } as never);
+
+    const [createArg] = mockPrismaService.user.create.mock.calls[0] as [
+      { data: Record<string, unknown> },
+    ];
+    expect(createArg.data.role).toBeUndefined();
   });
 
   it('should safely reject non-existent user with UnauthorizedException', async () => {

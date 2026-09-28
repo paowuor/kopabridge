@@ -47,6 +47,40 @@ const parseCorsOrigins = (raw: string | undefined) => {
     .filter(Boolean);
 };
 
+/**
+ * Number of reverse-proxy hops to trust when resolving the client IP.
+ *
+ * The throttler and `req.ip` (captured onto refresh tokens for the login
+ * audit trail) both key off the resolved client address. Behind nginx without
+ * this, every external request looks like it comes from the proxy itself and
+ * all per-IP rate limits collapse into a single shared bucket.
+ *
+ * Accepts a hop count ("1"), "true" (trust all — only safe when nothing but
+ * trusted infrastructure can reach the port), or a falsy value to disable.
+ * Set to 0 when the API port is published directly to untrusted clients, since
+ * a direct client can then spoof X-Forwarded-For.
+ */
+const parseTrustProxy = (raw: string | undefined): number | boolean => {
+  const value = raw?.trim().toLowerCase();
+
+  if (!value || value === '0' || value === 'false' || value === 'no') {
+    return false;
+  }
+
+  if (value === 'true' || value === 'yes' || value === 'all') {
+    return true;
+  }
+
+  const hops = parseInt(value, 10);
+  if (Number.isNaN(hops) || hops < 0) {
+    throw new Error(
+      `❌ CONFIGURATION ERROR: TRUST_PROXY must be a non-negative integer, "true", or "false". Received: ${raw}`,
+    );
+  }
+
+  return hops;
+};
+
 export default () => {
   const encryptionKey = assertEnv(
     'TOKEN_ENCRYPTION_KEY',
@@ -82,6 +116,10 @@ export default () => {
     app: {
       env: nodeEnv,
       corsOrigins: parseCorsOrigins(process.env.CORS_ORIGIN),
+      // Defaults to trusting the single nginx hop that fronts the API in both
+      // docker-compose files. Override to 0 if the API port is ever published
+      // straight to untrusted clients, which would make X-Forwarded-For spoofable.
+      trustProxy: parseTrustProxy(process.env.TRUST_PROXY ?? '1'),
     },
 
     redis: {
