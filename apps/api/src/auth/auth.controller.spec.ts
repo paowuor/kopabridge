@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -18,6 +18,13 @@ describe('AuthController', () => {
     headers: { 'user-agent': 'Jest-Agent' },
     ip: '127.0.0.1',
   } as unknown as Request;
+
+  const mockCookie = jest.fn();
+  const mockClearCookie = jest.fn();
+  const mockResponse = {
+    cookie: mockCookie,
+    clearCookie: mockClearCookie,
+  } as unknown as Response;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -126,5 +133,80 @@ describe('AuthController', () => {
     const result = await controller.resetPassword(dto);
     expect(result.message).toContain('Password has been successfully reset');
     expect(mockAuthService.resetPassword).toHaveBeenCalledWith(dto);
+  });
+
+  it('should set refresh token in HttpOnly cookie on login when response is provided', async () => {
+    const dto = { email: 'test@kopabridge.com', password: 'password123' };
+    mockAuthService.login.mockResolvedValueOnce({
+      access_token: 'mock-access',
+      refresh_token: 'cookie-refresh-token',
+      token_type: 'Bearer',
+      expires_in: 900,
+    });
+
+    await controller.login(dto, mockRequest, mockResponse);
+
+    expect(mockCookie).toHaveBeenCalled();
+    const [cookieName, cookieVal, cookieOpts] = mockCookie.mock.calls[0] as [
+      string,
+      string,
+      { httpOnly: boolean; path: string },
+    ];
+    expect(cookieName).toBe('kopabridge_refresh_token');
+    expect(cookieVal).toBe('cookie-refresh-token');
+    expect(cookieOpts.httpOnly).toBe(true);
+    expect(cookieOpts.path).toBe('/api/v1/auth');
+  });
+
+  it('should refresh token using cookie when body refreshToken is not provided', async () => {
+    const requestWithCookie = {
+      headers: { 'user-agent': 'Jest-Agent' },
+      ip: '127.0.0.1',
+      cookies: { kopabridge_refresh_token: 'token-from-cookie' },
+    } as unknown as Request;
+
+    mockAuthService.refresh.mockResolvedValueOnce({
+      access_token: 'rotated-access',
+      refresh_token: 'rotated-cookie-refresh',
+      token_type: 'Bearer',
+      expires_in: 900,
+    });
+
+    const result = await controller.refresh(
+      {},
+      requestWithCookie,
+      mockResponse,
+    );
+
+    expect(result.access_token).toBe('rotated-access');
+    expect(mockAuthService.refresh).toHaveBeenCalledWith('token-from-cookie', {
+      userAgent: 'Jest-Agent',
+      ipAddress: '127.0.0.1',
+    });
+    expect(mockCookie).toHaveBeenCalled();
+    const [cookieName, cookieVal] = mockCookie.mock.calls[0] as [
+      string,
+      string,
+    ];
+    expect(cookieName).toBe('kopabridge_refresh_token');
+    expect(cookieVal).toBe('rotated-cookie-refresh');
+  });
+
+  it('should clear refresh token cookie on logout', async () => {
+    mockAuthService.logout.mockResolvedValueOnce({
+      status: 'success',
+      message: 'Session successfully terminated.',
+    });
+
+    await controller.logout({}, mockRequest, mockResponse);
+
+    expect(mockClearCookie).toHaveBeenCalled();
+    const [cookieName, clearOpts] = mockClearCookie.mock.calls[0] as [
+      string,
+      { httpOnly: boolean; path: string },
+    ];
+    expect(cookieName).toBe('kopabridge_refresh_token');
+    expect(clearOpts.httpOnly).toBe(true);
+    expect(clearOpts.path).toBe('/api/v1/auth');
   });
 });

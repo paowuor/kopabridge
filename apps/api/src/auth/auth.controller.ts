@@ -3,10 +3,12 @@ import {
   Post,
   Body,
   Req,
+  Res,
   HttpCode,
   HttpStatus,
+  UnauthorizedException,
 } from '@nestjs/common';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -16,6 +18,11 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Public } from './decorators/public.decorator';
 import { Throttle } from '@nestjs/throttler';
+import {
+  REFRESH_COOKIE_NAME,
+  getRefreshCookieOptions,
+  getClearRefreshCookieOptions,
+} from './utils/cookie.util';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -50,7 +57,7 @@ export class AuthController {
   @ApiResponse({
     status: 200,
     description:
-      'Successfully authenticated. Access token and rotating refresh token issued.',
+      'Successfully authenticated. Access token and rotating refresh token issued (also set in secure HttpOnly cookie).',
   })
   @ApiResponse({
     status: 401,
@@ -61,10 +68,25 @@ export class AuthController {
     status: 429,
     description: 'Too Many Requests. Login rate limit exceeded.',
   })
-  login(@Body() dto: LoginDto, @Req() req: Request) {
+  async login(
+    @Body() dto: LoginDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res?: Response,
+  ) {
     const userAgent = req.headers['user-agent'];
     const ipAddress = req.ip;
-    return this.authService.login(dto, { userAgent, ipAddress });
+    const tokens = await this.authService.login(dto, { userAgent, ipAddress });
+
+    if (res) {
+      const isProd = process.env.NODE_ENV === 'production';
+      res.cookie(
+        REFRESH_COOKIE_NAME,
+        tokens.refresh_token,
+        getRefreshCookieOptions(isProd),
+      );
+    }
+
+    return tokens;
   }
 
   @Public()
@@ -76,7 +98,8 @@ export class AuthController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Tokens successfully rotated and refreshed.',
+    description:
+      'Tokens successfully rotated and refreshed (new cookie issued).',
   })
   @ApiResponse({
     status: 401,
@@ -86,10 +109,38 @@ export class AuthController {
     status: 429,
     description: 'Too Many Requests. Refresh rate limit exceeded.',
   })
-  refresh(@Body() dto: RefreshTokenDto, @Req() req: Request) {
+  async refresh(
+    @Body() dto: RefreshTokenDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res?: Response,
+  ) {
     const userAgent = req.headers['user-agent'];
     const ipAddress = req.ip;
-    return this.authService.refresh(dto.refreshToken, { userAgent, ipAddress });
+    const rawRefreshToken =
+      dto.refreshToken ||
+      (req.cookies as Record<string, string> | undefined)?.[
+        REFRESH_COOKIE_NAME
+      ];
+
+    if (!rawRefreshToken) {
+      throw new UnauthorizedException('Refresh token is required');
+    }
+
+    const tokens = await this.authService.refresh(rawRefreshToken, {
+      userAgent,
+      ipAddress,
+    });
+
+    if (res) {
+      const isProd = process.env.NODE_ENV === 'production';
+      res.cookie(
+        REFRESH_COOKIE_NAME,
+        tokens.refresh_token,
+        getRefreshCookieOptions(isProd),
+      );
+    }
+
+    return tokens;
   }
 
   @Public()
@@ -98,10 +149,30 @@ export class AuthController {
   @ApiOperation({ summary: 'Revoke refresh token and invalidate session' })
   @ApiResponse({
     status: 200,
-    description: 'Session successfully invalidated.',
+    description: 'Session successfully invalidated and refresh cookie cleared.',
   })
-  logout(@Body() dto: Partial<RefreshTokenDto>) {
-    return this.authService.logout(dto.refreshToken);
+  async logout(
+    @Body() dto: Partial<RefreshTokenDto>,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res?: Response,
+  ) {
+    const rawRefreshToken =
+      dto.refreshToken ||
+      (req.cookies as Record<string, string> | undefined)?.[
+        REFRESH_COOKIE_NAME
+      ];
+
+    const result = await this.authService.logout(rawRefreshToken);
+
+    if (res) {
+      const isProd = process.env.NODE_ENV === 'production';
+      res.clearCookie(
+        REFRESH_COOKIE_NAME,
+        getClearRefreshCookieOptions(isProd),
+      );
+    }
+
+    return result;
   }
 
   @Public()
